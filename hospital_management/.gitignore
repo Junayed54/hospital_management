@@ -32,8 +32,8 @@ pip-log.txt
 Thumbs.db        # Windows thumbnail cache
 
 # Ignore compiled or generated files
-staticfiles/
-media/
+# staticfiles/
+# media/
 
 # Ignore any deployment or build artifacts
 build/
