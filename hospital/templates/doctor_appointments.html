@@ -1,0 +1,17 @@
+<!-- templates/doctor_appointments.html -->
+{% extends 'index.html' %}
+{% load static %}
+
+{% block title %}Doctor's Appointments{% endblock %}
+
+{% block content %}
+  <h1 class="text-4xl font-bold text-center mb-8">Appointments for Dr. {{ doctor_name }}</h1>
+  
+  <div id="appointmentsList" class="space-y-4">
+    <!-- Appointment cards will be loaded here -->
+  </div>
+
+{% endblock %}
+{% block scripts %}
+    <script src="{% static '../static/js/doctor/doctor_appointments.js' %}"></script>
+{% endblock %}

@@ -1,0 +1,55 @@
+# Ignore the .env file containing sensitive information
+.env
+
+# Python cache and bytecode files
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Django-specific files
+db.sqlite3       # SQLite database (only if you're using SQLite for development)
+*.sqlite3        # Catch-all for any SQLite database files
+
+# Logs and temp files
+*.log
+*.tmp
+*.log.*
+
+# Virtual environment directories
+venv/
+env/
+*.egg-info/
+pip-log.txt
+
+# IDE and editor files
+.vscode/
+.idea/
+*.iml
+
+# OS files
+.DS_Store        # macOS file
+Thumbs.db        # Windows thumbnail cache
+
+# Ignore compiled or generated files
+staticfiles/
+media/
+
+# Ignore any deployment or build artifacts
+build/
+dist/
+
+# Coverage reports
+htmlcov/
+.coverage
+*.cover
+
+# Node modules (if using frontend packages)
+node_modules/
+
+# Ignore secret keys or configuration
+config/
+settings_local.py
+
+# If using a cloud or container platform:
+.dockerignore

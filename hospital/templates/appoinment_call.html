@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Video Call</title>
+    <!-- Include Agora SDK -->
+    <script src="https://download.agora.io/sdk/release/AgoraRTC_N.js"></script>
+    <!-- Tailwind CSS for styling (optional) -->
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+</head>
+<body class="bg-gray-100 flex items-center justify-center h-screen">
+    <div class="w-full max-w-4xl bg-white shadow-lg rounded-lg p-6">
+        <h1 class="text-2xl font-bold mb-4 text-center">Video Call</h1>
+        <div id="video-container" class="flex justify-center mb-4">
+            <div id="local-video" class="w-1/2 h-80 bg-black"></div>
+            <div id="remote-video" class="w-1/2 h-80 bg-black ml-4"></div>
+        </div>
+        <div class="text-center">
+            <button id="join-btn" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">Join Call</button>
+            <button id="leave-btn" class="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600 ml-4">Leave Call</button>
+        </div>
+    </div>
+
+    <script>
+        // Function to extract query parameters from the URL
+        // Extract query parameters from the URL
+        function getQueryParam(param) {
+            const urlParams = new URLSearchParams(window.location.search);
+            return urlParams.get(param);
+        }
+
+        // Extract channel name from the URL path
+        function getChannelName() {
+            const pathSegments = window.location.pathname.split('/');
+            return pathSegments[pathSegments.length - 1]; // The last segment
+        }
+
+        // Agora variables
+        const APP_ID = 'YOUR_AGORA_APP_ID'; // Replace this with your Agora App ID
+        const TOKEN = getQueryParam('token');
+        const CHANNEL_NAME = getChannelName();
+
+        // Debugging: Log extracted values
+        console.log('APP_ID:', APP_ID);
+        console.log('TOKEN:', TOKEN);
+        console.log('CHANNEL_NAME:', CHANNEL_NAME);
+
+        // Initialize Agora client
+        let client;
+        let localTracks = [];
+
+        // Start the call when the page loads
+        window.onload = async () => {
+            if (!TOKEN || !CHANNEL_NAME) {
+                console.error('Missing necessary parameters in the URL!');
+                alert('Invalid link or missing parameters. Please contact support.');
+                return;
+            }
+
+            try {
+                // Create Agora client
+                client = AgoraRTC.createClient({ mode: 'rtc', codec: 'vp8' });
+                
+                // Join the channel using APP_ID, CHANNEL_NAME, and TOKEN
+                await client.join(APP_ID, CHANNEL_NAME, TOKEN, null);
+                console.log('Successfully joined the channel:', CHANNEL_NAME);
+
+                // Create and publish local tracks (video and audio)
+                localTracks = await AgoraRTC.createMicrophoneAndCameraTracks();
+                await client.publish(localTracks);
+                console.log('Local tracks published.');
+
+                // Attach local video stream to a container
+                const localVideoContainer = document.getElementById('local-video');
+                localTracks[1].play(localVideoContainer);
+            } catch (error) {
+                console.error('Error joining the channel:', error);
+                alert('Failed to join the call. Please try again later.');
+            }
+        };
+
+        // Handle leaving the call
+        async function leaveCall() {
+            try {
+                localTracks.forEach(track => track.close()); // Close local tracks
+                await client.leave(); // Leave the Agora channel
+                console.log('Left the channel.');
+                window.location.href = '/'; // Redirect to home page or any other page
+            } catch (error) {
+                console.error('Error leaving the call:', error);
+            }
+        }
+
+        // Button to leave the call
+        document.getElementById('leave-btn').onclick = leaveCall;
+
+
+    </script>
+</body>
+</html>

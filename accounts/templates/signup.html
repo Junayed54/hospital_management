@@ -1,0 +1,17 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="container mx-auto p-6 max-w-md">
+  <h2 class="text-3xl font-bold mb-6">Sign Up</h2>
+  <form id="signupForm">
+    <input type="text" name="username" placeholder="Username" class="w-full border p-2 mb-4" required>
+    <input type="email" name="email" placeholder="Email" class="w-full border p-2 mb-4">
+    <input type="text" name="phone_number" placeholder="Phone Number" class="w-full border p-2 mb-4" required>
+    <input type="password" name="password" placeholder="Password" class="w-full border p-2 mb-4" required>
+    <button type="submit" class="w-full bg-blue-500 text-white p-2 rounded">Register</button>
+  </form>
+</div>
+{% endblock %}
+
+{% block scripts%}
+    <script src= '../static/js/auth.js'></script>
+{% endblock %}

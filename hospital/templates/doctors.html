@@ -1,0 +1,19 @@
+{% extends 'index.html' %}
+
+{% load static %}
+
+{% block title %}Our Doctors{% endblock %}
+
+{% block content %}
+    <h1 class="text-4xl font-bold text-center mb-8">Our Doctors</h1>
+    
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+        <div class="container mx-auto py-8" id="doctor-list">
+            <!-- Doctors will be dynamically loaded here -->
+        </div>
+    </div>
+{% endblock %}
+
+{% block scripts %}
+    <script src="{% static '../static/js/doctor/doctor_list.js' %}"></script>
+{% endblock %}

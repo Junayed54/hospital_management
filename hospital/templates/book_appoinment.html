@@ -1,0 +1,42 @@
+<!-- templates/book_appointment.html -->
+{% extends 'index.html' %}
+
+{% load static %}
+
+
+
+{% block content %}
+    <div class="max-w-2xl mx-auto bg-white p-8 rounded-lg shadow-lg mt-14">
+    <h1 class="text-3xl font-bold mb-6 text-center mt-12">Book an Appointment</h1>
+    <form id="appointmentForm" class="space-y-4">
+        <div>
+        <label class="block text-gray-700">Patient Name</label>
+        <input type="text" name="patient_name" class="w-full border rounded p-2" required />
+        </div>
+        <div>
+        <label class="block text-gray-700">Phone Number</label>
+        <input type="tel" name="phone_number" class="w-full border rounded p-2" required />
+        </div>
+        <div>
+        <label class="block text-gray-700">Email</label>
+        <input type="email" name="email" class="w-full border rounded p-2" />
+        </div>
+        <div>
+        <label class="block text-gray-700">Address</label>
+        <textarea name="address" class="w-full border rounded p-2"></textarea>
+        </div>
+        <div>
+            <label for="appointment_date" class="block text-gray-700">Appointment Date & Time</label>
+            <input type="datetime-local" id="appointment_date" name="appointment_date" class="w-full border rounded p-2" required />
+        </div>
+        <div class="text-center">
+        <button type="submit" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">Submit</button>
+        </div>
+    </form>
+    </div>
+
+
+{% endblock %}
+{% block scripts %}
+    <script src="{% static '../static/js/doctor/appointment.js' %}"></script>
+{% endblock %}

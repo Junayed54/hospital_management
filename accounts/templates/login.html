@@ -1,0 +1,16 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block content %}
+<div class="container mx-auto p-6 max-w-md" style="margin-top:150px; width:500px; height:500px">
+  <h2 class="text-3xl font-bold mb-6 text-center">Login</h2>
+  <form id="loginForm">
+    <input type="text" id="phone_number" name="phone_number" placeholder="Phone Number" class="w-full border p-2 mb-4" required>
+    <input type="password" id="password" name="password" placeholder="Password" class="w-full border p-2 mb-4" required>
+    <button type="submit" class="w-full bg-blue-500 text-white p-2 rounded ">Login</button>
+  </form>
+</div>
+{% endblock %}
+
+{% block scripts%}
+    <script src="{% static 'js/signin.js' %}"></script>
+{% endblock %}
