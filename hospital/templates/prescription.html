@@ -5,39 +5,94 @@
 {% block title %}Our Doctors{% endblock %}
 
 {% block content %}
-<div class="w-full max-w-lg bg-white shadow-md rounded px-8 py-4 mt-14 mx-auto" style="margin-top: 150px; margin">
+<div class="w-full max-w-lg bg-white shadow-md rounded px-8 py-4 mt-14 mx-auto" style="margin-top: 150px;">
     <h2 class="text-2xl font-bold mb-4 text-center">Prescribe Patient</h2>
     <form id="prescription-form" class="space-y-4">
         <div>
             <label for="diagnosis" class="block text-gray-700">Diagnosis:</label>
             <input type="text" id="diagnosis" name="diagnosis" class="w-full px-4 py-2 border rounded-md" required>
         </div>
-        
+
         <div>
             <label for="prescription" class="block text-gray-700">Prescription:</label>
-            <textarea id="prescription" name="prescription" class="w-full px-4 py-2 border rounded-md" rows="4" required></textarea>
+            <textarea id="prescription" name="prescription" class="w-full px-4 py-2 border rounded-md" rows="4"></textarea>
         </div>
-        
+
         <div>
             <label for="treatment_date" class="block text-gray-700">Treatment Date:</label>
             <input type="date" id="treatment_date" name="treatment_date" class="w-full px-4 py-2 border rounded-md" required>
         </div>
-        
+
         <div>
             <label for="follow_up_date" class="block text-gray-700">Follow-Up Date:</label>
             <input type="date" id="follow_up_date" name="follow_up_date" class="w-full px-4 py-2 border rounded-md">
         </div>
-        
+
         <div>
             <label for="treatment_notes" class="block text-gray-700">Treatment Notes:</label>
             <textarea id="treatment_notes" name="treatment_notes" class="w-full px-4 py-2 border rounded-md" rows="4"></textarea>
         </div>
-        
+
+        <!-- Medication Section -->
+        <div id="medications-section">
+            <label class="block text-gray-700">Medications:</label>
+            <div id="medications-container">
+                <!-- Medication item template -->
+                <div class="medication-item mb-4">
+                    <input type="text" name="medication_name[]" placeholder="Medication Name" class="w-full px-4 py-2 border rounded-md mb-2">
+                    <input type="text" name="dosage[]" placeholder="Dosage (e.g., 500mg)" class="w-full px-4 py-2 border rounded-md mb-2">
+                    <input type="text" name="frequency[]" placeholder="Frequency (e.g., Twice a day)" class="w-full px-4 py-2 border rounded-md mb-2">
+                    <input type="text" name="duration[]" placeholder="Duration (e.g., 7 days)" class="w-full px-4 py-2 border rounded-md mb-2">
+                    <textarea name="notes[]" placeholder="Notes" class="w-full px-4 py-2 border rounded-md mb-2"></textarea>
+                    <button type="button" class="remove-medication-btn text-red-500 hover:underline">Remove</button>
+                </div>
+            </div>
+            <button type="button" id="add-medication-btn" class="mt-2 bg-green-500 text-white py-2 px-4 rounded-md hover:bg-green-600">Add Medication</button>
+        </div>
+
+        <!-- Test Section -->
+        <div id="tests-section" class="mt-6">
+            <label class="block text-gray-700">Tests:</label>
+            <div id="tests-container">
+                <!-- Test item template -->
+                <div class="test-item mb-4">
+                    <input type="text" name="test_name[]" placeholder="Test Name" class="w-full px-4 py-2 border rounded-md mb-2">
+                    <textarea name="test_description[]" placeholder="Test Description" class="w-full px-4 py-2 border rounded-md mb-2"></textarea>
+                    <input type="date" name="test_date[]" placeholder="Test Date" class="w-full px-4 py-2 border rounded-md mb-2">
+                    <button type="button" class="remove-test-btn text-red-500 hover:underline">Remove</button>
+                </div>
+            </div>
+            <button type="button" id="add-test-btn" class="mt-2 bg-purple-500 text-white py-2 px-4 rounded-md hover:bg-purple-600">Add Test</button>
+        </div>
+
         <button type="submit" class="w-full bg-blue-500 text-white py-2 px-4 rounded-md hover:bg-blue-600">Submit Prescription</button>
     </form>
 </div>
 {% endblock %}
 
 {% block scripts %}
+    <script>
+        document.getElementById('add-medication-btn').addEventListener('click', () => {
+            const container = document.getElementById('medications-container');
+            const item = container.querySelector('.medication-item').cloneNode(true);
+            container.appendChild(item);
+        });
+        
+        document.getElementById('add-test-btn').addEventListener('click', () => {
+            const container = document.getElementById('tests-container');
+            const item = container.querySelector('.test-item').cloneNode(true);
+            container.appendChild(item);
+        });
+        
+        document.getElementById('medications-container').addEventListener('click', (e) => {
+            if (e.target.classList.contains('remove-medication-btn')) {
+                e.target.parentElement.remove();
+            }
+        });
+        
+        document.getElementById('tests-container').addEventListener('click', (e) => {
+            if (e.target.classList.contains('remove-test-btn')) { e.target.parentElement.remove(); } }); 
+    </script>
+
     <script src="{% static '../static/js/doctor/prescription.js' %}"></script>
 {% endblock %}

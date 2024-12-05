@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Doctor, Patient, Appointment, Treatment, Prescription
+from .models import Doctor, Patient, Appointment, Treatment, Prescription, Notification, Medication, Test
 
 # Custom admin configuration for Doctor
 class DoctorAdmin(admin.ModelAdmin):
@@ -67,9 +67,21 @@ admin.site.register(Patient, PatientAdmin)
 admin.site.register(Treatment, TreatmentAdmin)
 
 
+class TestInline(admin.TabularInline):
+    model = Test
+    extra = 1 
+
+class MedicationInline(admin.TabularInline):
+    model = Medication
+    extra = 1  # Number of empty forms to display
+    fields = ('name', 'dosage', 'frequency', 'duration', 'notes')
+    # readonly_fields = ('name',)  # Optional: make specific fields read-only
+    can_delete = True 
 
 @admin.register(Prescription)
 class PrescriptionAdmin(admin.ModelAdmin):
+    inlines = [MedicationInline, TestInline]
+
     list_display = (
         'patient', 'doctor', 'diagnosis', 'treatment_date', 'follow_up_date', 
         'published', 'cost'
@@ -93,3 +105,26 @@ class PrescriptionAdmin(admin.ModelAdmin):
         if not request.user.is_superuser and request.user.role != 'doctor':
             readonly_fields = ['published', 'diagnosis', 'treatment_notes', 'cost']
         return readonly_fields
+
+
+
+
+
+@admin.register(Notification)
+
+class NotificationAdmin(admin.ModelAdmin):
+    list_display = ('user', 'message', 'created_at', 'read', 'scheduled_time')
+    list_filter = ('read', 'created_at', 'scheduled_time')
+    search_fields = ('user__username', 'message')
+    ordering = ('-created_at',)
+    readonly_fields = ('created_at',)
+
+    fieldsets = (
+        (None, {
+            'fields': ('user', 'message', 'scheduled_time', 'read')
+        }),
+        ('Timestamps', {
+            'fields': ('created_at',),
+            'classes': ('collapse',),
+        }),
+    )

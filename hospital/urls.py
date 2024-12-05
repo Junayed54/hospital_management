@@ -8,7 +8,8 @@ from .views import (
     AppointmentCreateView, AppointmentListView, PatientAppointmentDetailView,
     DoctorAppointmentListView,
     PrescriptionListCreateView, PrescriptionRetrieveUpdateDestroyView,
-    # get_agora_token,
+    PatientAppointmentsListView,
+    
 )
 
 urlpatterns = [
@@ -33,11 +34,13 @@ urlpatterns = [
     path('api/appointments/', AppointmentCreateView.as_view(), name='create_appointment'),
     path('api/appointments/list/', AppointmentListView.as_view(), name='list_appointments'),
     path('api/appointment/<int:pk>/', PatientAppointmentDetailView.as_view(), name='patient_appointment_detail'),
+    path('patient-appointment/', PatientAppointmentsListView.as_view(), name='patient-appointments'),
     path('api/doctor/<int:doctor_id>/appointments/', DoctorAppointmentListView.as_view(), name='doctor_appointments'),
     
     #prescription urls
     path('prescriptions/', PrescriptionListCreateView.as_view(), name='prescription-list-create'),
     path('prescriptions/<int:pk>/', PrescriptionRetrieveUpdateDestroyView.as_view(), name='prescription-detail'),
+    
     
     # path('api/get-agora-token/', get_agora_token, name='get_agora_token'),
 
@@ -52,6 +55,7 @@ templates = [
     path('prescribe/', TemplateView.as_view(template_name='prescription.html'), name='prescription'),
     path('call/<str:pk>', TemplateView.as_view(template_name= 'appoinment_call.html'), name='call'),
     path('appointment_details/<int:id>/', TemplateView.as_view(template_name='appointment_details.html'), name='appointment_details'),
+    path('patient_appointment/', TemplateView.as_view(template_name='patient_appointment.html'), name='patient_appointment'),
 
 ]
 

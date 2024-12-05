@@ -16,7 +16,7 @@ from django.conf import settings
 from rest_framework.decorators import action
 from rest_framework_simplejwt.authentication import JWTAuthentication
 from django.contrib.auth import get_user_model
-
+from rest_framework.pagination import PageNumberPagination
 User = get_user_model() 
 
 
@@ -195,6 +195,7 @@ class PrescriptionListCreateView(generics.ListCreateAPIView):
             #     'blood_type': 'O+',  # Placeholder value
             # }
         )
+        
 
         # Save the prescription with linked doctor, appointment, and patient
         serializer.save(
@@ -202,7 +203,8 @@ class PrescriptionListCreateView(generics.ListCreateAPIView):
             appointment=appointment,
             patient=patient_profile
         )
-        self.send_sms(patient_phone, random_password)
+        if created:
+            self.send_sms(patient_phone, random_password)
         
         
     def send_sms(self, phone_number, password):
@@ -259,17 +261,15 @@ class PrescriptionRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIVie
     
     
 
-# agura
+class AppointmentPagination(PageNumberPagination):
+    page_size = 10  # Set the number of appointments per page
 
-# from .utils.agora_utils import generate_agora_token
+class PatientAppointmentsListView(generics.ListAPIView):
+    serializer_class = AppointmentSerializer
+    permission_classes = [IsAuthenticated]
+    pagination_class = AppointmentPagination  # Add pagination
+    
+    def get_queryset(self):
+        return Appointment.objects.filter(phone_number=self.request.user.phone_number).order_by('-appointment_date')
 
-# def get_agora_token(request):
-#     channel_name = request.GET.get('channel_name')  # e.g., 'doctor_patient_123'
-#     user_id = request.user.id  # Assuming the user is logged in
-    
-#     if not channel_name:
-#         return JsonResponse({'error': 'Channel name is required'}, status=400)
-    
-#     token = generate_agora_token(channel_name, user_id)
-    
-#     return JsonResponse({'token': token, 'channel_name': channel_name})
+

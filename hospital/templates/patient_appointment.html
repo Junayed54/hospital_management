@@ -1,0 +1,25 @@
+{% extends 'index.html' %}
+
+{% load static %}
+
+{% block title %}Patient appoinment{% endblock %}
+
+{% block content %}
+    <div class="max-w-7xl mx-auto py-12" style="margin-top:150px">
+        <h1 class="text-3xl font-semibold text-center mb-8">Your Appointments</h1>
+
+        <!-- Appointment List -->
+        <div id="appointments-container" class="space-y-4" >
+            <!-- Appointments will be displayed here -->
+        </div>
+
+        <!-- Loading Spinner -->
+        <div id="loading" class="text-center hidden">
+            <span class="text-xl">Loading...</span>
+        </div>
+    </div>
+{% endblock %}
+
+{% block scripts %}
+    <script src="{% static '../static/js/patient/patient_appoinment.js' %}"></script>
+{% endblock %}

@@ -46,7 +46,7 @@ class Appointment(models.Model):
     address = models.TextField(null=True, blank=True)
     appointment_date = models.DateTimeField(null=True, blank=True)
     video_link = models.CharField(max_length=500, null=True, blank=True) 
-    
+    patient_problem = models.TextField(null=True, blank=True, help_text="Description of the patient's current problem or symptoms")
     class Meta:
         constraints = [
             models.UniqueConstraint(fields=['doctor', 'appointment_date'], name='unique_doctor_appointment')
@@ -108,6 +108,50 @@ class Prescription(models.Model):
     treatment_notes = models.TextField(blank=True)
     cost = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
     published = models.BooleanField(default=False)  # New field
+    next_appointment_date = models.DateField(blank=True, null=True)
+    treatment_result = models.TextField(blank=True, null=True)  # New field for storing results
 
     def __str__(self):
-        return f"Prescription for {self.patient} - {self.treatment_date}"
+        return f"Prescription for {self.patient} on {self.treatment_date}"
+
+
+class Test(models.Model):
+    prescription = models.ForeignKey(
+        'Prescription',
+        on_delete=models.CASCADE,
+        related_name='tests'
+    )
+    test_name = models.CharField(max_length=100)  # e.g., "Blood Test", "X-ray"
+    test_description = models.TextField(blank=True, null=True)  # Additional details or instructions
+    test_date = models.DateField(blank=True, null=True)  # Scheduled test date
+    result = models.TextField(blank=True, null=True)  # Result of the test after completion
+    status = models.CharField(
+        max_length=20, 
+        choices=[('pending', 'Pending'), ('completed', 'Completed')], 
+        default='pending'
+    )
+
+    def __str__(self):
+        return f"{self.test_name} for {self.prescription.patient}"
+
+class Medication(models.Model):
+    prescription = models.ForeignKey ( 'Prescription', on_delete=models.CASCADE, related_name='medications')
+    name = models.CharField(max_length=100) 
+    dosage = models.CharField(max_length=50) # e.g., "500 mg"
+    frequency = models.CharField(max_length=50) # e.g., "Twice a day"
+    duration = models.CharField(max_length=50) # e.g., "7 days"
+    notes = models.TextField(blank=True, null=True) # Additional instructions
+     
+    def __str__(self): 
+        return f"{self.name} - {self.dosage}"
+
+
+
+class Notification(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="notifications") 
+    message = models.TextField() 
+    created_at = models.DateTimeField(auto_now_add=True) 
+    read = models.BooleanField(default=False) 
+    scheduled_time = models.DateTimeField() # When the notification should be sent 
+    def __str__(self): 
+        return f"Notification for {self.user.username} at {self.scheduled_time}"
