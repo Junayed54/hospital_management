@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Doctor, Patient, Appointment, Treatment, Prescription, Medication, Notification
+from .models import Doctor, Patient, Appointment, Treatment, Prescription, Medication, Notification, Test
 from accounts.serializers import CustomUserSerializer
 class DoctorSerializer(serializers.ModelSerializer):
     user = CustomUserSerializer(read_only=True)
@@ -53,13 +53,8 @@ class MedicationSerializer(serializers.ModelSerializer):
         fields = ['id', 'name', 'dosage', 'frequency', 'duration', 'notes']
 
 
-from rest_framework import serializers
-from .models import Prescription, Medication, Test
 
-class MedicationSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Medication
-        fields = ['id', 'name', 'dosage', 'frequency']
+
 
 class TestSerializer(serializers.ModelSerializer):
     class Meta:

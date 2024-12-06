@@ -1,7 +1,7 @@
 from django.shortcuts import render, get_object_or_404
 from rest_framework import generics, permissions
 from rest_framework.generics import RetrieveAPIView
-from .models import Doctor, Patient, Appointment, Treatment, Prescription
+from .models import Doctor, Patient, Appointment, Treatment, Prescription, Test
 from .serializers import DoctorSerializer, PatientSerializer, AppointmentSerializer, TreatmentSerializer, PrescriptionSerializer
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.views import APIView
@@ -234,12 +234,14 @@ class PrescriptionRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIVie
     permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
-        user = self.request.user
-        if user.role == 'doctor':
-            return Prescription.objects.filter(doctor__user=user)
-        elif user.role == 'patient':
-            return Prescription.objects.filter(patient__user=user, published=True)
-        return Prescription.objects.none()
+        appointment_id = self.kwargs.get('pk')  # Capture appointment ID from the URL
+        appointment = Appointment.objects.get(id=appointment_id)
+        
+        if not appointment_id:
+            return Prescription.objects.none()  
+        obj = Prescription.objects.filter(appointment=appointment)
+        print(obj.first())
+        return obj
 
     def perform_update(self, serializer):
         # Ensure only the doctor can update and publish prescriptions
@@ -258,7 +260,14 @@ class PrescriptionRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIVie
         prescription.save()
         return Response({"detail": "Prescription published successfully!"}, status=status.HTTP_200_OK)
     
-    
+class PatientPrescriptionView(RetrieveAPIView):
+    serializer_class = PrescriptionSerializer
+    permission_classes = [IsAuthenticated]  # Restrict access to authenticated users
+
+    def get_object(self):
+        appointment_id = self.kwargs['id']
+        appointment = Appointment.objects.get(id=appointment_id)
+        return get_object_or_404(Prescription, appointment=appointment)
     
 
 class AppointmentPagination(PageNumberPagination):

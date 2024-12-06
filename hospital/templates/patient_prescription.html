@@ -1,0 +1,18 @@
+{% extends 'index.html' %}
+
+{% load static %}
+
+{% block title %}Our Doctors{% endblock %}
+
+{% block content %}
+    <div class="container" style="margin-top: 100px; padding-left:100px; padding-right:auto;">
+        <h1 class="text-2xl font-bold mb-4">Prescription Details</h1>
+        <div id="prescription-container" class="bg-white p-6 rounded shadow">
+            <p>Loading prescription data...</p>
+        </div>
+    </div>
+{% endblock %}
+
+{% block scripts %}
+    <script src="{% static '../static/js/patient/pataient_prescription.js' %}"></script>
+{% endblock %}

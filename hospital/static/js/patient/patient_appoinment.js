@@ -37,7 +37,7 @@ async function fetchAppointments() {
             appointments.forEach(appointment => {
                 const appointmentElement = document.createElement('div');
                 appointmentElement.classList.add('bg-white', 'shadow-md', 'rounded', 'p-4', 'mb-4');
-
+            
                 const appointmentContent = `
                     <h3 class="font-semibold text-xl">${appointment.patient_name} - ${new Date(appointment.appointment_date).toLocaleString()}</h3>
                     <p class="text-sm text-gray-600">Doctor: ${appointment.doctor || 'N/A'}</p>
@@ -46,11 +46,17 @@ async function fetchAppointments() {
                     <p class="text-sm text-gray-600">Email: ${appointment.email || 'N/A'}</p>
                     <p class="text-sm text-gray-600">Address: ${appointment.address || 'N/A'}</p>
                     ${appointment.video_link ? `<p class="text-sm text-blue-600"><a href="${appointment.video_link}" target="_blank">Video Link</a></p>` : ''}
+                    <button
+                        onclick="window.location.href='/patient_prescription/${appointment.id}/'"
+                        class="bg-blue-500 text-white px-4 py-2 mt-2 rounded hover:bg-blue-600">
+                        View Prescription
+                    </button>
                 `;
                 appointmentElement.innerHTML = appointmentContent;
-
+            
                 appointmentsContainer.appendChild(appointmentElement);
             });
+            
         }
     } catch (error) {
         console.error('Error fetching appointments:', error);
