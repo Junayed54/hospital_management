@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Update Patient Details</title>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            background-color: #f9f9f9;
+        }
+        form {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #fff;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        form div {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        input, select, textarea, button {
+            width: 100%;
+            padding: 10px;
+            margin: 5px 0;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+        button {
+            background-color: #007BFF;
+            color: #fff;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+    </style>
+</head>
+<body>
+
+<h1>Update Your Details</h1>
+
+<form id="updatePatientForm">
+    <div>
+        <label for="name">Name</label>
+        <input type="text" id="name" name="name">
+    </div>
+    <div>
+        <label for="age">Age</label>
+        <input type="number" id="age" name="age">
+    </div>
+    <div>
+        <label for="date_of_birth">Date of Birth</label>
+        <input type="date" id="date_of_birth" name="date_of_birth">
+    </div>
+    <div>
+        <label for="gender">Gender</label>
+        <select id="gender" name="gender">
+            <option value="">Select Gender</option>
+            <option value="Male">Male</option>
+            <option value="Female">Female</option>
+            <option value="Other">Other</option>
+        </select>
+    </div>
+    <div>
+        <label for="address">Address</label>
+        <textarea id="address" name="address"></textarea>
+    </div>
+    <div>
+        <label for="medical_history">Medical History</label>
+        <textarea id="medical_history" name="medical_history"></textarea>
+    </div>
+    <div>
+        <label for="emergency_contact">Emergency Contact</label>
+        <input type="text" id="emergency_contact" name="emergency_contact">
+    </div>
+    <div>
+        <label for="blood_type">Blood Type</label>
+        <select id="blood_type" name="blood_type">
+            <option value="">Select Blood Type</option>
+            <option value="A+">A+</option>
+            <option value="A-">A-</option>
+            <option value="B+">B+</option>
+            <option value="B-">B-</option>
+            <option value="O+">O+</option>
+            <option value="O-">O-</option>
+            <option value="AB+">AB+</option>
+            <option value="AB-">AB-</option>
+        </select>
+    </div>
+    <div>
+        <label for="insurance_provider">Insurance Provider</label>
+        <input type="text" id="insurance_provider" name="insurance_provider">
+    </div>
+    <div>
+        <label for="insurance_policy_number">Insurance Policy Number</label>
+        <input type="text" id="insurance_policy_number" name="insurance_policy_number">
+    </div>
+    <button type="submit">Update</button>
+</form>
+
+
+<section>
+    <h2>Update Password</h2>
+    <form id="password-update-form" method="POST">
+        <label for="current_password">Current Password</label>
+        <input type="password" id="current_password" name="current_password" required>
+
+        <label for="new_password">New Password</label>
+        <input type="password" id="new_password" name="new_password" required>
+
+        <button type="submit">Update Password</button>
+    </form>
+</section>
+
+<script>
+    const apiUrl = 'http://127.0.0.1:8000/api/patient-details/'; // Simplified API endpoint
+
+    // Get token from localStorage
+    const accessToken = localStorage.getItem('access_token');
+
+    if (!accessToken) {
+        alert('Please log in to access this page.');
+        window.location.href = '/login/';
+    }
+
+    // Prefill the form with existing patient data
+    document.addEventListener('DOMContentLoaded', function () {
+        axios.get(apiUrl, {
+            headers: {
+                'Authorization': `Bearer ${accessToken}`
+            }
+        })
+        .then(response => {
+            const patient = response.data;
+            document.getElementById('name').value = patient.name || '';
+            document.getElementById('age').value = patient.age || '';
+            document.getElementById('date_of_birth').value = patient.date_of_birth || '';
+            document.getElementById('gender').value = patient.gender || '';
+            document.getElementById('address').value = patient.address || '';
+            document.getElementById('medical_history').value = patient.medical_history || '';
+            document.getElementById('emergency_contact').value = patient.emergency_contact || '';
+            document.getElementById('blood_type').value = patient.blood_type || '';
+            document.getElementById('insurance_provider').value = patient.insurance_provider || '';
+            document.getElementById('insurance_policy_number').value = patient.insurance_policy_number || '';
+        })
+        .catch(error => console.error('Error fetching patient data:', error));
+    });
+
+    // Handle form submission
+    document.getElementById('updatePatientForm').addEventListener('submit', function (e) {
+        e.preventDefault();
+
+        const updatedData = {
+            name: document.getElementById('name').value || null,
+            age: document.getElementById('age').value || null,
+            date_of_birth: document.getElementById('date_of_birth').value || null,
+            gender: document.getElementById('gender').value || null,
+            address: document.getElementById('address').value || null,
+            medical_history: document.getElementById('medical_history').value || null,
+            emergency_contact: document.getElementById('emergency_contact').value || null,
+            blood_type: document.getElementById('blood_type').value || null,
+            insurance_provider: document.getElementById('insurance_provider').value || null,
+            insurance_policy_number: document.getElementById('insurance_policy_number').value || null,
+        };
+
+        axios.patch(apiUrl, updatedData, {
+            headers: {
+                'Authorization': `Bearer ${accessToken}`,
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(response => {
+            alert('Your details have been updated successfully!');
+            console.log('Updated data:', response.data);
+        })
+        .catch(error => {
+            alert('Error updating your details.');
+            console.error('Error:', error.response);
+        });
+    });
+
+    document.getElementById('password-update-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+
+        const formData = new FormData(e.target);
+        const data = {
+            current_password: formData.get('current_password'),
+            new_password: formData.get('new_password'),
+        };
+
+        try {
+            const response = await fetch('/password-update/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${localStorage.getItem('access_token')}` // Assuming JWT token is stored
+                },
+                body: JSON.stringify(data),
+            });
+
+            const result = await response.json();
+            if (response.ok) {
+                alert('Password updated successfully!');
+            } else {
+                alert(result.error || 'Failed to update password.');
+            }
+        } catch (error) {
+            console.error('Error updating password:', error);
+        }
+    });
+</script>
+
+</body>
+</html>

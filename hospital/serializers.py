@@ -1,6 +1,8 @@
 from rest_framework import serializers
-from .models import Doctor, Patient, Appointment, Treatment, Prescription, Medication, Notification, Test
+from django.db import transaction
+from .models import Doctor, Appointment, Treatment, Prescription, Medication, Notification, Test
 from accounts.serializers import CustomUserSerializer
+from patients.serializers import PatientSerializer
 class DoctorSerializer(serializers.ModelSerializer):
     user = CustomUserSerializer(read_only=True)
 
@@ -8,36 +10,37 @@ class DoctorSerializer(serializers.ModelSerializer):
         model = Doctor
         fields = ['id','full_name', 'user', 'specialty', 'license_number', 'bio', 'experience_years', 'education', 'consultation_fee', 'contact_email', 'contact_phone']
 
-class PatientSerializer(serializers.ModelSerializer):
-    user = CustomUserSerializer(read_only=True)
+# class PatientSerializer(serializers.ModelSerializer):
+#     user = CustomUserSerializer(read_only=True)
 
-    class Meta:
-        model = Patient
-        fields = ['id', 'user', 'date_of_birth', 'gender', 'address', 'medical_history', 'emergency_contact', 'blood_type', 'insurance_provider', 'insurance_policy_number']
+#     class Meta:
+#         model = Patient
+#         fields = ['id', 'user', 'date_of_birth', 'gender', 'address', 'medical_history', 'emergency_contact', 'blood_type', 'insurance_provider', 'insurance_policy_number']
 
 class AppointmentSerializer(serializers.ModelSerializer):
+    
     class Meta:
         model = Appointment
-        fields = ['id', 'doctor', 'user', 'patient_name', 'phone_number', 'email', 'address', 'appointment_date', 'video_link', 'patient_problem']
+        fields = ['id', 'doctor', 'patient', 'patient_name', 'phone_number', 'email', 'address', 'appointment_date', 'video_link', 'patient_problem', 'status']
         extra_kwargs = {
             'appointment_date': {'required': True},  # Ensure this field is required
         }
 
     def create(self, validated_data):
+        """
+        Overriding create to validate the appointment_date and link an appointment 
+        with the authenticated user if available.
+        """
         # Validate appointment_date explicitly
         if not validated_data.get('appointment_date'):
             raise serializers.ValidationError({"appointment_date": "This field is required."})
-        
-        return super().create(validated_data)
 
-    def create(self, validated_data):
-        """
-        Overriding create to handle linking an appointment with an existing user if available.
-        """
-        request_user = self.context.get('request').user  # Access user from context
-        if request_user.is_authenticated:
+        # Access user from context and link to the appointment
+        request_user = self.context.get('request').user
+        if request_user and request_user.is_authenticated:
             validated_data['user'] = request_user  # Link appointment to authenticated user
-        return super().create(validated_data) 
+
+        return super().create(validated_data)
         
         
 class TreatmentSerializer(serializers.ModelSerializer):
@@ -62,8 +65,9 @@ class TestSerializer(serializers.ModelSerializer):
         fields = ['id', 'test_name', 'test_description', 'test_date', 'result', 'status']
 
 class PrescriptionSerializer(serializers.ModelSerializer):
-    medications = MedicationSerializer(many=True, required=False)  # Optional
-    tests = TestSerializer(many=True, required=False)  # Optional
+    medications = MedicationSerializer(many=True, required=False)
+    tests = TestSerializer(many=True, required=False)
+    patient = PatientSerializer(read_only=True)
 
     class Meta:
         model = Prescription
@@ -75,49 +79,76 @@ class PrescriptionSerializer(serializers.ModelSerializer):
         ]
 
     def create(self, validated_data):
-        medications_data = validated_data.pop('medications', [])  # Default to empty list if not provided
-        tests_data = validated_data.pop('tests', [])  # Default to empty list if not provided
-        prescription = Prescription.objects.create(**validated_data)
+        medications_data = validated_data.pop('medications', [])
+        tests_data = validated_data.pop('tests', [])
 
-        # Create medications only if data is provided
-        for medication_data in medications_data:
-            Medication.objects.create(prescription=prescription, **medication_data)
-        
-        # Create tests only if data is provided
-        for test_data in tests_data:
-            Test.objects.create(prescription=prescription, **test_data)
-        
+        with transaction.atomic():
+            prescription = Prescription.objects.create(**validated_data)
+
+            # Bulk create medications
+            Medication.objects.bulk_create([
+                Medication(prescription=prescription, **medication_data)
+                for medication_data in medications_data
+            ])
+
+            # Bulk create tests
+            Test.objects.bulk_create([
+                Test(prescription=prescription, **test_data)
+                for test_data in tests_data
+            ])
+
         return prescription
 
     def update(self, instance, validated_data):
         medications_data = validated_data.pop('medications', [])
         tests_data = validated_data.pop('tests', [])
-        
+
         # Update prescription fields
-        instance.diagnosis = validated_data.get('diagnosis', instance.diagnosis)
-        instance.prescription = validated_data.get('prescription', instance.prescription)
-        instance.treatment_date = validated_data.get('treatment_date', instance.treatment_date)
-        instance.follow_up_date = validated_data.get('follow_up_date', instance.follow_up_date)
-        instance.treatment_notes = validated_data.get('treatment_notes', instance.treatment_notes)
-        instance.cost = validated_data.get('cost', instance.cost)
-        instance.published = validated_data.get('published', instance.published)
-        instance.next_appointment_date = validated_data.get('next_appointment_date', instance.next_appointment_date)
-        instance.treatment_result = validated_data.get('treatment_result', instance.treatment_result)
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
         instance.save()
 
-        # Clear and update medications only if data is provided
-        if medications_data:
-            instance.medications.all().delete()
-            for medication_data in medications_data:
-                Medication.objects.create(prescription=instance, **medication_data)
-        
-        # Clear and update tests only if data is provided
-        if tests_data:
-            instance.tests.all().delete()
-            for test_data in tests_data:
-                Test.objects.create(prescription=instance, **test_data)
-        
+        with transaction.atomic():
+            # Update medications
+            self._update_or_create_related_objects(
+                instance, medications_data, Medication, 'medications'
+            )
+
+            # Update tests
+            self._update_or_create_related_objects(
+                instance, tests_data, Test, 'tests'
+            )
+
         return instance
+
+    def _update_or_create_related_objects(self, instance, related_data, model_class, related_field_name):
+        """
+        Helper method to update or create related objects.
+        """
+        related_manager = getattr(instance, related_field_name)
+        existing_objects = {obj.id: obj for obj in related_manager.all()}
+
+        # Track IDs to retain
+        retain_ids = []
+
+        for data in related_data:
+            obj_id = data.get('id')
+            if obj_id and obj_id in existing_objects:
+                # Update existing object
+                obj = existing_objects[obj_id]
+                for attr, value in data.items():
+                    setattr(obj, attr, value)
+                obj.save()
+                retain_ids.append(obj_id)
+            else:
+                # Create new object
+                model_class.objects.create(**data, prescription=instance)
+
+        # Delete objects not included in the update
+        to_delete_ids = set(existing_objects.keys()) - set(retain_ids)
+        model_class.objects.filter(id__in=to_delete_ids).delete()
+
+
         
 class NotificationSerializer(serializers.ModelSerializer):
     class Meta:

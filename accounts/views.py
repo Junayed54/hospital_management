@@ -1,6 +1,10 @@
 from rest_framework import generics, status
 from rest_framework.views import APIView
 from rest_framework.response import Response
+
+from django.contrib.auth import update_session_auth_hash
+from rest_framework.permissions import IsAuthenticated
+from django.contrib.auth.hashers import check_password
 from rest_framework_simplejwt.tokens import RefreshToken
 from .models import CustomUser
 from .serializers import UserRegistrationSerializer, UserLoginSerializer
@@ -62,3 +66,27 @@ class LogoutView(APIView):
             return Response({"detail": "No refresh token provided."}, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
             return Response({"detail": "Invalid token."}, status=status.HTTP_400_BAD_REQUEST)
+        
+        
+        
+class PasswordUpdateView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, *args, **kwargs):
+        user = request.user
+        current_password = request.data.get('current_password')
+        new_password = request.data.get('new_password')
+
+        if not current_password or not new_password:
+            return Response({"error": "Both fields are required."}, status=status.HTTP_400_BAD_REQUEST)
+
+        if not check_password(current_password, user.password):
+            return Response({"error": "Current password is incorrect."}, status=status.HTTP_400_BAD_REQUEST)
+
+        user.set_password(new_password)
+        user.save()
+
+        # Keep the user logged in after password change
+        update_session_auth_hash(request, user)
+
+        return Response({"message": "Password updated successfully."}, status=status.HTTP_200_OK)

@@ -1,23 +1,33 @@
-from django.urls import path
+from django.urls import path, include
+from rest_framework.routers import DefaultRouter
 from django.views.generic import TemplateView
 from .views import (
-    DoctorListCreateView, DoctorDetailView,
+    DoctorListCreateView, DoctorDetailView, DoctorUpdateView,
     PatientListCreateView, PatientDetailView,
     AppointmentListCreateView, AppointmentDetailView,
     TreatmentListCreateView, TreatmentDetailView,
-    AppointmentCreateView, AppointmentListView, PatientAppointmentDetailView,
+    AppointmentCreateView, AppointmentListView, PatientAppointmentDetailView, CancelAppointmentView,
     DoctorAppointmentListView,
     PrescriptionListCreateView, PrescriptionRetrieveUpdateDestroyView, PatientPrescriptionView,
     PatientAppointmentsListView,
+    DoctorDashboardView,
+    PendingAppointmentsViewSet,
     
 )
 
-urlpatterns = [
 
+router = DefaultRouter()
+router.register(r'pending-appointments', PendingAppointmentsViewSet, basename='pending-appointments')
+
+
+urlpatterns = [
+    path('api/', include(router.urls)),
     # Doctor URLs
     path('doctors/', DoctorListCreateView.as_view(), name='doctor-list-create'),
     path('doctors/<int:pk>/', DoctorDetailView.as_view(), name='doctor-detail'),
-
+    path('doctor/update/', DoctorUpdateView.as_view(), name='doctor-update'),
+    
+    
     # Patient URLs
     path('patients/', PatientListCreateView.as_view(), name='patient-list-create'),
     path('patients/<int:pk>/', PatientDetailView.as_view(), name='patient-detail'),
@@ -36,7 +46,7 @@ urlpatterns = [
     path('api/appointment/<int:pk>/', PatientAppointmentDetailView.as_view(), name='patient_appointment_detail'),
     path('patient-appointment/', PatientAppointmentsListView.as_view(), name='patient-appointments'),
     path('api/doctor/<int:doctor_id>/appointments/', DoctorAppointmentListView.as_view(), name='doctor_appointments'),
-    
+    path('appointments/<int:pk>/cancel/', CancelAppointmentView.as_view(), name='cancel_appointment'),
     #prescription urls
     path('prescriptions/', PrescriptionListCreateView.as_view(), name='prescription-list-create'),
     path('prescriptions/<int:pk>/', PrescriptionRetrieveUpdateDestroyView.as_view(), name='prescription-detail'),
@@ -45,7 +55,7 @@ urlpatterns = [
     
     # path('api/get-agora-token/', get_agora_token, name='get_agora_token'),
 
-
+    path('api/doctor/dashboard/', DoctorDashboardView.as_view(), name='doctor_dashboard'),
 ]
 
 
@@ -58,6 +68,9 @@ templates = [
     path('appointment_details/<int:id>/', TemplateView.as_view(template_name='appointment_details.html'), name='appointment_details'),
     path('patient_appointment/', TemplateView.as_view(template_name='patient_appointment.html'), name='patient_appointment'),
     path('patient_prescription/<int:id>/', TemplateView.as_view(template_name='patient_prescription.html'), name='patient_prescription'),
+    
+    path('doctor/dashboard/', TemplateView.as_view(template_name='doctor_dashboard.html'), name='doctor_dashboard'),
+    path('update_doctor/', TemplateView.as_view(template_name='update_doctor.html'), name='update_doctor'),
 
 ]
 

@@ -41,7 +41,11 @@ INSTALLED_APPS = [
     'rest_framework',
     'rest_framework_simplejwt',
     'accounts',
-    'hospital'
+    'hospital', 
+    'patients',
+    'payment',
+    
+    
 ]
 
 MIDDLEWARE = [
@@ -54,6 +58,11 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
+AUTHENTICATION_BACKENDS = [
+    'django.contrib.auth.backends.ModelBackend',  # Default Django auth
+    # Add your custom backend if needed
+]
+
 
 ROOT_URLCONF = 'hospital_management.urls'
 
@@ -62,6 +71,7 @@ TEMPLATES = [
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
         'DIRS': [os.path.join(BASE_DIR, 'hospital/templates'),
                  os.path.join(BASE_DIR, 'accounts/templates'),
+                 os.path.join(BASE_DIR, 'patients/templates'),
                 ],
         'APP_DIRS': True,
         'OPTIONS': {

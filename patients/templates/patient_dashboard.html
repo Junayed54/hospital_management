@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+{% load static %}
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Patient Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        .btn-update-profile button {
+            background-color: #007bff;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+    
+        .btn-update-profile button:hover {
+            background-color: #0056b3;
+        }
+    </style>
+</head>
+<body class="bg-gray-100">
+    <div class="container mx-auto px-4 py-6">
+        <h1 class="text-3xl font-bold mb-6">Patient Dashboard</h1>
+        <a href="/patient-update/" class="btn-update-profile">
+            <button type="button">Update Profile</button>
+        </a>
+        <!-- Reports Section -->
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 my-8">
+            <div class="bg-blue-200 p-4 rounded-lg shadow">
+                <p class="text-xl font-semibold">Gender</p>
+                <p id="gender" class="text-2xl"></p>
+            </div>
+            <div class="bg-red-200 p-4 rounded-lg shadow">
+                <p class="text-xl font-semibold">Age</p>
+                <p id="age" class="text-2xl"></p>
+            </div>
+            <div class="bg-green-200 p-4 rounded-lg shadow">
+                <p class="text-xl font-semibold">Blood Type</p>
+                <p id="bloodType" class="text-2xl"></p>
+            </div>
+            {% comment %} <div class="bg-purple-200 p-4 rounded-lg shadow">
+                <p class="text-xl font-semibold">Consulting Doctor</p>
+                <p id="doctor" class="text-2xl"></p>
+            </div> {% endcomment %}
+        </div>
+
+        <!-- Metrics Section -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <!-- BP Levels -->
+            <div class="bg-white p-4 rounded-lg shadow">
+                <h4>Blood Pressure Levels</h4>
+                <ul id="bpList"></ul>
+            </div>
+
+            <!-- Sugar Levels -->
+            <div class="bg-white p-4 rounded-lg shadow">
+                <h4>Sugar Levels</h4>
+                <ul id="sugarList"></ul>
+            </div>
+
+            <!-- Heart Rate -->
+            <div class="bg-white p-4 rounded-lg shadow">
+                <h4>Heart Rates</h4>
+                <ul id="heartRateList"></ul>
+            </div>
+
+            <!-- Cholesterol Levels -->
+            <div class="bg-white p-4 rounded-lg shadow">
+                <h4>Cholesterol Levels</h4>
+                <ul id="cholesterolList"></ul>
+            </div>
+        </div>
+
+
+
+        <div class="container mx-auto my-8">
+            <!-- Upcoming Appointments Section -->
+            <h3 class="text-2xl font-semibold text-gray-700 mb-4">Upcoming Appointments</h3>
+            <div class="overflow-x-auto bg-white shadow-md rounded-lg">
+                <table id="upcomingAppointmentsTable" class="table-auto w-full text-left border-collapse">
+                    <thead class="bg-gray-200 text-gray-600 uppercase text-sm leading-normal">
+                        <tr>
+                            <th class="py-3 px-6">ID</th>
+                            <th class="py-3 px-6">Doctor</th>
+                            <th class="py-3 px-6">Date</th>
+                            <th class="py-3 px-6">Status</th>
+                            <th class="py-3 px-6">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody class="text-gray-600 text-sm font-light">
+                        <!-- Dynamic Rows Here -->
+                    </tbody>
+                </table>
+            </div>
+        
+            <!-- Joined Appointments Section -->
+            <h3 class="text-2xl font-semibold text-gray-700 mt-8 mb-4">Joined Appointments</h3>
+            <div class="overflow-x-auto bg-white shadow-md rounded-lg">
+                <table id="joinedAppointmentsTable" class="table-auto w-full text-left border-collapse">
+                    <thead class="bg-gray-200 text-gray-600 uppercase text-sm leading-normal">
+                        <tr>
+                            <th class="py-3 px-6">ID</th>
+                            <th class="py-3 px-6">Doctor</th>
+                            <th class="py-3 px-6">Date</th>
+                            <th class="py-3 px-6">Status</th>
+                            <th class="py-3 px-6">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody class="text-gray-600 text-sm font-light">
+                        <!-- Dynamic Rows Here -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        
+
+        
+    </div>
+
+    <script src={% static "js/dashboard.js" %}></script>
+</body>
+</html>

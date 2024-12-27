@@ -1,0 +1,45 @@
+{% extends "index.html" %}
+
+{% block content %}
+<div class="container mx-auto p-4">
+  <h1 class="text-2xl font-bold mb-4">Payments</h1>
+
+  <!-- List Payments -->
+  <div id="payments-list" class="mb-6">
+    <h2 class="text-lg font-semibold mb-2">Your Payments:</h2>
+    <ul id="payments-container" class="list-disc pl-5"></ul>
+  </div>
+
+  <!-- Add Payment -->
+  <div class="bg-gray-100 p-4 rounded">
+    <h2 class="text-lg font-semibold mb-2">Make a Payment</h2>
+    <form id="add-payment-form" class="flex flex-col space-y-3">
+      <select
+        id="payment-method-select"
+        class="p-2 border rounded"
+        required
+      ></select>
+      <input
+        type="number"
+        id="payment-amount"
+        class="p-2 border rounded"
+        placeholder="Enter Payment Amount"
+        required
+      />
+      <textarea
+        id="payment-description"
+        class="p-2 border rounded"
+        placeholder="Enter Payment Description"
+      ></textarea>
+      <button
+        type="submit"
+        class="bg-blue-500 text-white p-2 rounded hover:bg-blue-700"
+      >
+        Make Payment
+      </button>
+    </form>
+  </div>
+</div>
+
+<script src="{% static '../static/js/payments.js' %}"></script>
+{% endblock %}

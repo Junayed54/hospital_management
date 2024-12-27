@@ -1,12 +1,17 @@
 from django.shortcuts import render, get_object_or_404
 from rest_framework import generics, permissions
 from rest_framework.generics import RetrieveAPIView
-from .models import Doctor, Patient, Appointment, Treatment, Prescription, Test
-from .serializers import DoctorSerializer, PatientSerializer, AppointmentSerializer, TreatmentSerializer, PrescriptionSerializer
+from .models import Doctor, Appointment, Treatment, Prescription, Test
+from patients.models import Patient, BPLevel, SugarLevel, HeartRate, CholesterolLevel
+from .serializers import DoctorSerializer, AppointmentSerializer, TreatmentSerializer, PrescriptionSerializer
+from patients.serializers import PatientSerializer
+from rest_framework.exceptions import ValidationError
+
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
+from rest_framework.viewsets import ModelViewSet
 from django.utils.crypto import get_random_string
 from django.contrib.auth.hashers import make_password
 from django.core.mail import send_mail  # For email (if needed)
@@ -15,6 +20,8 @@ from django.core.exceptions import PermissionDenied
 from django.conf import settings
 from rest_framework.decorators import action
 from rest_framework_simplejwt.authentication import JWTAuthentication
+from django.utils import timezone
+from rest_framework.generics import UpdateAPIView
 from django.contrib.auth import get_user_model
 from rest_framework.pagination import PageNumberPagination
 User = get_user_model() 
@@ -53,6 +60,21 @@ class DoctorListCreateView(generics.ListCreateAPIView):
 class DoctorDetailView(generics.RetrieveUpdateDestroyAPIView):
     queryset = Doctor.objects.all()
     serializer_class = DoctorSerializer
+    
+class DoctorUpdateView(UpdateAPIView):
+    queryset = Doctor.objects.all()
+    serializer_class = DoctorSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_object(self):
+        """
+        Ensure that the logged-in user can only update their own doctor profile.
+        """
+        try:
+            doctor = Doctor.objects.get(user=self.request.user)
+            return doctor
+        except Doctor.DoesNotExist:
+            raise PermissionDenied("You do not have permission to edit this profile.")
 
 # Patient Views
 class PatientListCreateView(generics.ListCreateAPIView):
@@ -118,7 +140,7 @@ class AppointmentCreateView(generics.CreateAPIView):
                 doctor = Doctor.objects.get(id=doctor_id)
             except Doctor.DoesNotExist:
                 return Response({"error": "Doctor not found"}, status=status.HTTP_400_BAD_REQUEST)
-            serializer.save(user=user, doctor=doctor)
+            serializer.save(patient=user, doctor=doctor)
         else:
             return Response({"error": "Doctor ID is required"}, status=status.HTTP_400_BAD_REQUEST)
         
@@ -141,7 +163,6 @@ class PatientAppointmentDetailView(RetrieveAPIView):
     #     return Appointment.objects.filter(user=user)
 
 
-
 class DoctorAppointmentListView(APIView):
     # permission_classes = [IsAuthenticated]  # Optional: Restrict access to logged-in users
 
@@ -149,7 +170,24 @@ class DoctorAppointmentListView(APIView):
         appointments = Appointment.objects.filter(doctor_id=doctor_id).order_by('-appointment_date')
         serializer = AppointmentSerializer(appointments, many=True)
         return Response(serializer.data)
-    
+
+
+class DoctorAppointmentsAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, *args, **kwargs):
+        # Ensure the logged-in user is a doctor
+        if not hasattr(request.user, 'doctor'):
+            return Response(
+                {"error": "You are not authorized to view this resource."},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        doctor = request.user.doctor  # Assuming OneToOne relation between User and Doctor
+        appointments = Appointment.objects.filter(doctor=doctor).order_by('-appointment_date')
+        serializer = AppointmentSerializer(appointments, many=True)
+        
+        return Response(serializer.data, status=status.HTTP_200_OK)
     
 # prescription views
 class PrescriptionListCreateView(generics.ListCreateAPIView):
@@ -159,65 +197,103 @@ class PrescriptionListCreateView(generics.ListCreateAPIView):
     authentication_classes = [JWTAuthentication]
 
     def perform_create(self, serializer):
+        
         if self.request.user.role != 'doctor':
             raise PermissionDenied("Only doctors can create prescriptions.")
-        
-        appointment_id = self.request.data.get('appointment')
-        doctor_id = self.request.data.get('doctor')
+        try:
+            # Retrieve appointment and doctor
+            appointment_id = self.request.data.get('appointment')
+            
+            appointment = get_object_or_404(Appointment, id=appointment_id)
+            patient_phone = appointment.phone_number
 
-        # Retrieve the appointment object
-        appointment = get_object_or_404(Appointment, id=appointment_id)
-        patient_phone = appointment.phone_number  # Assuming Appointment has a ForeignKey to Patient
-        random_password = get_random_string(length=12)
-        # Create or get the patient user
-        patient_user, created = User.objects.get_or_create(
-            phone_number=patient_phone,
-            defaults={
-                'role': 'patient',
-                'phone_number': patient_phone,
-                
+            # Generate a random password for a new patient
+            random_password = get_random_string(length=12)
+
+            # Get or create the patient user
+            patient_user, created = User.objects.get_or_create(
+                phone_number=patient_phone,
+                defaults={
+                    'role': 'patient',
+                    'phone_number': patient_phone,
+                }
+            )
+            if created:
+                patient_user.set_password(random_password)
+                patient_user.save()
+            
+            # Ensure the Patient profile exists
+            patient_profile, _ = Patient.objects.get_or_create(
+                user=patient_user,
+                defaults={
+                    'name': appointment.patient_name,
+                    'address': appointment.address
+                }
+            )
+            
+            
+
+            # Extract and validate health metrics
+            health_metrics = {
+                'bp_systolic': self.request.data.get('vital_measurements').get('bp_systolic'),
+                'bp_diastolic': self.request.data.get('vital_measurements').get('bp_diastolic'),
+                'sugar_level': self.request.data.get('vital_measurements').get('sugar_level'),
+                'heart_rate': self.request.data.get('vital_measurements').get('heart_rate'),
+                'cholesterol_level': self.request.data.get('vital_measurements').get('cholesterol_level'),
             }
-        )
-        
-        if created:
-            patient_user.set_password(random_password)
-            patient_user.save()
+            print(health_metrics)
 
-        # Ensure the Patient profile exists
-        patient_profile, profile_created = Patient.objects.get_or_create(
-            user=patient_user,
-            name=appointment.patient_name,
-            address=appointment.address
-            # defaults={
-            #     'date_of_birth': '2000-01-01',  # Placeholder, customize as needed
-            #     'gender': 'Other',
-            #     'emergency_contact': patient_phone,
-            #     'blood_type': 'O+',  # Placeholder value
-            # }
-        )
-        
+            missing_metrics = [key for key, value in health_metrics.items() if not value]
+            if missing_metrics:
+                raise ValidationError(
+                    f"Missing health metrics: {', '.join(missing_metrics)}"
+                )
 
-        # Save the prescription with linked doctor, appointment, and patient
-        serializer.save(
-            doctor=self.request.user.doctor_profile,
-            appointment=appointment,
-            patient=patient_profile
-        )
-        if created:
-            self.send_sms(patient_phone, random_password)
-        
-        
+            # Save the prescription
+            prescription = serializer.save(
+                doctor=self.request.user.doctor_profile,
+                appointment=appointment,
+                patient=patient_profile,
+            )
+
+            # Create health metric records
+            BPLevel.objects.create(
+                patient=patient_profile,
+                systolic=health_metrics['bp_systolic'],
+                diastolic=health_metrics['bp_diastolic'],
+            )
+            SugarLevel.objects.create(
+                patient=patient_profile,
+                level=health_metrics['sugar_level'],
+            )
+            HeartRate.objects.create(
+                patient=patient_profile,
+                rate=health_metrics['heart_rate'],
+            )
+            CholesterolLevel.objects.create(
+                patient=patient_profile,
+                level=health_metrics['cholesterol_level'],
+            )
+
+            # Send SMS if a new user was created
+            if created:
+                self.send_sms(patient_phone, random_password)
+
+        except ValidationError as ve:
+            raise ve
+        except Exception as e:
+            print(f"Error during prescription creation: {e}")
+            raise ValidationError("An error occurred during prescription creation.")
+
+    
     def send_sms(self, phone_number, password):
-        # Load Twilio credentials from environment variables or Django settings
         account_sid = settings.TWILIO_ACCOUNT_SID
         auth_token = settings.TWILIO_AUTH_TOKEN
         twilio_phone_number = settings.TWILIO_PHONE_NUMBER
 
         client = Client(account_sid, auth_token)
         phone_number = f"+88{phone_number}"
-        print(phone_number, password)
         message = f"Your account has been created. Your login password is: {password}"
-        # print(phone_number, password)
         try:
             client.messages.create(
                 body=message,
@@ -227,6 +303,9 @@ class PrescriptionListCreateView(generics.ListCreateAPIView):
             print(f"SMS sent successfully to {phone_number}")
         except Exception as e:
             print(f"Failed to send SMS: {e}")
+
+
+
 
 class PrescriptionRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
     queryset = Prescription.objects.all()
@@ -282,3 +361,129 @@ class PatientAppointmentsListView(generics.ListAPIView):
         return Appointment.objects.filter(phone_number=self.request.user.phone_number).order_by('-appointment_date')
 
 
+
+
+
+
+class DoctorDashboardView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        # Ensure the current user is a doctor
+        try:
+            doctor = Doctor.objects.get(user=request.user)
+        except Doctor.DoesNotExist:
+            return Response({"error": "You are not authorized to access this dashboard."}, status=403)
+
+        # Get the current day
+        today = timezone.now().date()
+
+        # Today's Appointments
+        total_appointments = Appointment.objects.filter(
+            doctor=doctor,
+            status='accepted',
+            appointment_date__date=today
+        ).count()
+
+        # Upcoming Appointments
+        upcoming_appointments = Appointment.objects.filter(
+            doctor=doctor,
+            status='accepted',
+            appointment_date__gte=timezone.now()
+        ).order_by('appointment_date')[:5]
+
+        # Total Patients (Based on Prescriptions)
+        total_patients = Prescription.objects.filter(doctor=doctor).values('patient').distinct().count()
+
+        # Today's Patients
+        todays_patients = Prescription.objects.filter(
+            doctor=doctor,
+            created_at=today  # Ensure `created_at` is a DateTimeField and correctly filtered by date
+        ).count()
+
+        # Serialize Data
+        doctor_serializer = DoctorSerializer(doctor)
+        upcoming_appointments_serializer = AppointmentSerializer(upcoming_appointments, many=True)
+
+        # Response Data
+        data = {
+            "doctor_profile": doctor_serializer.data,
+            "today_appointments": total_appointments,
+            "upcoming_appointments": upcoming_appointments_serializer.data,
+            "total_patients": total_patients,
+            "todays_patients": todays_patients,
+        }
+
+        return Response(data, status=200)
+
+
+
+class PendingAppointmentsViewSet(ModelViewSet):
+    """
+    A viewset for managing pending appointments.
+    """
+    queryset = Appointment.objects.all()
+    serializer_class = AppointmentSerializer
+
+    def get_queryset(self):
+        """
+        Filter the appointments to show only pending ones for the logged-in doctor.
+        """
+        user = self.request.user
+        
+        
+        if not user.is_authenticated:
+            return Appointment.objects.none()
+        return Appointment.objects.filter(doctor__user__phone_number=f"{user}", status="pending")
+
+    @action(detail=True, methods=["post"])
+    def accept(self, request, pk=None):
+        """
+        Accept an appointment.
+        """
+        print(pk)
+        try:
+            appointment = self.get_object()
+            print(appointment)
+            if appointment.status != "pending":
+                return Response(
+                    {"error": "Appointment is already processed."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            appointment.status = "accepted"
+            
+            appointment.save()
+            print(appointment.status)
+            return Response({"message": "Appointment accepted successfully."}, status=status.HTTP_200_OK)
+        except Appointment.DoesNotExist:
+            return Response({"error": "Appointment not found."}, status=status.HTTP_404_NOT_FOUND)
+
+    @action(detail=True, methods=["post"])
+    def reject(self, request, pk=None):
+        """
+        Reject an appointment.
+        """
+        try:
+            appointment = self.get_object()
+            if appointment.status != "pending":
+                return Response(
+                    {"error": "Appointment is already processed."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            appointment.status = "rejected"
+            appointment.save()
+            return Response({"message": "Appointment rejected successfully."}, status=status.HTTP_200_OK)
+        except Appointment.DoesNotExist:
+            return Response({"error": "Appointment not found."}, status=status.HTTP_404_NOT_FOUND)
+        
+class CancelAppointmentView(APIView):
+    def post(self, request, pk):
+        try:
+            appointment = Appointment.objects.get(id=pk, phone_number=f"{request.user}")
+            if appointment.status in ['pending']:
+                appointment.cancel()
+                return Response({'message': 'Appointment cancelled successfully.'}, status=status.HTTP_200_OK)
+            else:
+                return Response({'error': 'Appointment cannot be cancelled.'}, status=status.HTTP_400_BAD_REQUEST)
+        except Appointment.DoesNotExist:
+            return Response({'error': 'Appointment not found.'}, status=status.HTTP_404_NOT_FOUND)

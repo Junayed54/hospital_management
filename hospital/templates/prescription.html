@@ -33,6 +33,33 @@
             <textarea id="treatment_notes" name="treatment_notes" class="w-full px-4 py-2 border rounded-md" rows="4"></textarea>
         </div>
 
+        <!-- Vital Measurements Section -->
+        <div>
+            <h3 class="text-xl font-bold mt-6">Vital Measurements</h3>
+            <div class="mt-4">
+                <label for="bp-systolic" class="block text-gray-700">Blood Pressure (Systolic/Diastolic):</label>
+                <div class="flex space-x-2">
+                    <input type="number" id="bp-systolic" name="bp_systolic" placeholder="Systolic" class="w-1/2 px-4 py-2 border rounded-md" required>
+                    <input type="number" id="bp-diastolic" name="bp_diastolic" placeholder="Diastolic" class="w-1/2 px-4 py-2 border rounded-md" required>
+                </div>
+            </div>
+
+            <div class="mt-4">
+                <label for="sugar-level" class="block text-gray-700">Sugar Level (mg/dL):</label>
+                <input type="number" id="sugar-level" name="sugar_level" class="w-full px-4 py-2 border rounded-md" step="0.1">
+            </div>
+
+            <div class="mt-4">
+                <label for="heart-rate" class="block text-gray-700">Heart Rate (BPM):</label>
+                <input type="number" id="heart-rate" name="heart_rate" class="w-full px-4 py-2 border rounded-md" required>
+            </div>
+
+            <div class="mt-4">
+                <label for="cholesterol-level" class="block text-gray-700">Cholesterol Level (mg/dL):</label>
+                <input type="number" id="cholesterol-level" name="cholesterol_level" class="w-full px-4 py-2 border rounded-md" step="0.1">
+            </div>
+        </div>
+
         <!-- Medication Section -->
         <div id="medications-section">
             <label class="block text-gray-700">Medications:</label>
@@ -93,6 +120,5 @@
         document.getElementById('tests-container').addEventListener('click', (e) => {
             if (e.target.classList.contains('remove-test-btn')) { e.target.parentElement.remove(); } }); 
     </script>
-
     <script src="{% static '../static/js/doctor/prescription.js' %}"></script>
 {% endblock %}

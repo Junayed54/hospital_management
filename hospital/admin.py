@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Doctor, Patient, Appointment, Treatment, Prescription, Notification, Medication, Test
+from .models import Doctor, DoctorAvailability, Appointment, Treatment, Prescription, Notification, Medication, Test
 
 # Custom admin configuration for Doctor
 class DoctorAdmin(admin.ModelAdmin):
@@ -12,21 +12,15 @@ class DoctorAdmin(admin.ModelAdmin):
         ('Contact Info', {'fields': ('contact_email', 'contact_phone')}),
     )
 
-# Custom admin configuration for Patient
-class PatientAdmin(admin.ModelAdmin):
-    list_display = ('user', 'name', 'date_of_birth', 'gender', 'blood_type', 'insurance_provider')
-    search_fields = ('name', 'blood_type', 'insurance_provider')
-    list_filter = ('gender', 'blood_type')
-    fieldsets = (
-        ('Personal Info', {'fields': ('user', 'name', 'date_of_birth', 'gender', 'address')}),
-        ('Medical Info', {'fields': ('medical_history', 'blood_type', 'insurance_provider', 'insurance_policy_number')}),
-        ('Emergency Contact', {'fields': ('emergency_contact',)}),
-    )
+@admin.register(DoctorAvailability)
+class DoctorAvailabilityAdmin(admin.ModelAdmin):
+    list_display = ['doctor', 'date', 'start_time', 'end_time', 'max_patients', 'booked_patients']
+    list_filter = ['doctor', 'date']
 
 # Custom admin configuration for Appointment
 @admin.register(Appointment)
 class AppointmentAdmin(admin.ModelAdmin):
-    list_display = ('patient_name', 'doctor', 'phone_number', 'email', 'appointment_date', 'user')
+    list_display = ('id', 'patient_name', 'doctor', 'phone_number', 'email', 'appointment_date', 'patient', 'status')
     search_fields = ('patient_name', 'doctor__user__username', 'phone_number', 'email')
     list_filter = ('doctor', 'appointment_date')
     ordering = ('-appointment_date',)
@@ -34,7 +28,7 @@ class AppointmentAdmin(admin.ModelAdmin):
 
     fieldsets = (
         ('Patient Information', {
-            'fields': ('patient_name', 'phone_number', 'email', 'address', 'user', 'video_link')
+            'fields': ('patient_name', 'status', 'phone_number', 'email', 'address', 'patient', 'video_link')
         }),
         ('Appointment Details', {
             'fields': ('doctor', 'appointment_date')
@@ -62,7 +56,7 @@ class TreatmentAdmin(admin.ModelAdmin):
 
 # Register models with their custom admin configurations
 admin.site.register(Doctor, DoctorAdmin)
-admin.site.register(Patient, PatientAdmin)
+
 # admin.site.register(Appointment, AppointmentAdmin)
 admin.site.register(Treatment, TreatmentAdmin)
 
@@ -83,7 +77,7 @@ class PrescriptionAdmin(admin.ModelAdmin):
     inlines = [MedicationInline, TestInline]
 
     list_display = (
-        'patient', 'doctor', 'diagnosis', 'treatment_date', 'follow_up_date', 
+        'id', 'patient', 'doctor', 'diagnosis', 'treatment_date', 'follow_up_date', 
         'published', 'cost'
     )
     list_filter = ('published', 'treatment_date', 'doctor')

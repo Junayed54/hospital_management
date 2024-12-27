@@ -8,7 +8,9 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.1/css/all.min.css">
     <link rel="stylesheet" href="{% static 'css/index.css'%}">
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
-
+    {% block style %}
+    <!-- Default or shared styles can go here -->
+    {% endblock %}
 </head>
 <body>
     <!-- Header Section start -->
@@ -27,6 +29,9 @@
             <a href="/register/">sign up</a>
             <a href="/login/">sign in</a>
             <a href="#blogs">logout</a>
+            <a href="/doctor/dashboard/">Dr Dashboard</a>
+            <a href="/pateient-dashboard/">Patient Dboard</a>
+
         </nav>
 
 

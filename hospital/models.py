@@ -3,7 +3,7 @@ from accounts.models import CustomUser
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from .utils import RtcTokenBuilder 
-
+from patients.models import Patient
 User = get_user_model()
 
 
@@ -19,65 +19,100 @@ class Doctor(models.Model):
     contact_email = models.EmailField(blank=True)
     contact_phone = models.CharField(max_length=15, blank=True)
 
+    
+    def next_available_slot(self):
+        from .models import DoctorAvailability  # Avoid circular imports
+        now = datetime.now()
+        next_slot = DoctorAvailability.objects.filter(
+            doctor=self, 
+            date__gte=now.date(),
+            is_booked=False
+        ).order_by('date', 'start_time').first()
+        return next_slot
+    
+    
     def __str__(self):
         return f"Dr. {self.full_name} ({self.specialty})"
 
-class Patient(models.Model):
-    name = models.CharField(max_length=150, default="")
-    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='patient_profile')
-    date_of_birth = models.DateField(null=True, blank=True)
-    gender = models.CharField(max_length=10, choices=[('Male', 'Male'), ('Female', 'Female'), ('Other', 'Other')])
-    address = models.CharField(max_length=255, blank=True)
-    medical_history = models.TextField(blank=True)
-    emergency_contact = models.CharField(max_length=15)
-    blood_type = models.CharField(max_length=5, choices=[('A+', 'A+'), ('A-', 'A-'), ('B+', 'B-'), ('O+', 'O-'), ('O-', 'O-'), ('AB+', 'AB-')])
-    insurance_provider = models.CharField(max_length=100, blank=True)
-    insurance_policy_number = models.CharField(max_length=50, blank=True)
+class DoctorAvailability(models.Model):
+    doctor = models.ForeignKey(Doctor, on_delete=models.CASCADE, related_name='availability')
+    date = models.DateField()  # Specific date for availability
+    start_time = models.TimeField()  # Start time of availability
+    end_time = models.TimeField()  # End time of availability
+    max_patients = models.PositiveIntegerField(default=1)  # Maximum number of patients allowed
+    booked_patients = models.PositiveIntegerField(default=0)  # Number of patients already booked
+
+    class Meta:
+        unique_together = ('doctor', 'date', 'start_time')
+
+    def is_available(self):
+        """Check if there is still room for more patients."""
+        return self.booked_patients < self.max_patients
 
     def __str__(self):
-        return f"{self.name}"
+        return f"Availability for {self.doctor} on {self.date} from {self.start_time} to {self.end_time} (Booked: {self.booked_patients}/{self.max_patients})"
+
+
 
 class Appointment(models.Model):
+    STATUS_CHOICES = [
+        ('pending', 'Pending'),
+        ('accepted', 'Accepted'),
+        ('rejected', 'Rejected'),
+        ('cancelled', 'Cancelled'),
+    ]
+    
     doctor = models.ForeignKey(Doctor, on_delete=models.SET_NULL, null=True, blank=True)
-    user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)  # Optional link to User model
+    patient = models.ForeignKey(Patient, on_delete=models.SET_NULL, null=True, blank=True)
     patient_name = models.CharField(max_length=250)
     phone_number = models.CharField(max_length=15)
     email = models.EmailField(null=True, blank=True)
     address = models.TextField(null=True, blank=True)
     appointment_date = models.DateTimeField(null=True, blank=True)
-    video_link = models.CharField(max_length=500, null=True, blank=True) 
-    patient_problem = models.TextField(null=True, blank=True, help_text="Description of the patient's current problem or symptoms")
+    created_at = models.DateTimeField(auto_now_add=True)
+    video_link = models.CharField(max_length=500, null=True, blank=True)
+    patient_problem = models.TextField(null=True, blank=True)
+    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='pending')
+
     class Meta:
         constraints = [
-            models.UniqueConstraint(fields=['doctor', 'appointment_date'], name='unique_doctor_appointment')
+            models.UniqueConstraint(fields=['doctor', 'appointment_date'], name='unique_doctor_date'),
+            models.UniqueConstraint(fields=['doctor', 'appointment_date', 'phone_number'], name='unique_doctor_appointment')
         ]
-        
+
     def save(self, *args, **kwargs):
-        if not self.id:
+        is_new = self.pk is None
+        if is_new:
             super().save(*args, **kwargs)
-        # Generate video link only if it doesn't already exist
         if self.appointment_date and not self.video_link:
-            self.generate_agora_link()
-            super().save(update_fields=['video_link'])
-    
+            try:
+                self.generate_agora_link()
+                super().save(update_fields=['video_link'])
+            except Exception as e:
+                # Handle or log the error
+                pass
+        else:
+            super().save(*args, **kwargs)
+
     def generate_agora_link(self):
         app_id = settings.AGORA_APP_ID
         app_certificate = settings.AGORA_APP_CERTIFICATE
-        
-        # Generate Agora video link with a unique channel name
         channel_name = f"appointment_{self.id}_{int(self.appointment_date.timestamp())}"
         expiration_time = int(self.appointment_date.timestamp()) + 7200  # Token valid for 2 hours
-        
-        # Generate token using RtcTokenBuilder
         token = RtcTokenBuilder.buildTokenWithUid(
-            app_id, app_certificate, channel_name, 0,  # UID 0 for guests
-            expiration_time, expiration_time
+            app_id, app_certificate, channel_name, 0, expiration_time, expiration_time
         )
-        
-        # Construct the video link
         self.video_link = f"http://127.0.0.1:8000/call/{channel_name}?token={token}"
 
-
+    
+    def cancel(self):
+        if self.status not in ['accepted', 'rejected']:
+            self.status = 'cancelled'
+            self.save(update_fields=['status'])
+        else:
+            raise ValueError("Cannot cancel an appointment that has already been accepted or rejected.")
+        
+        
     def __str__(self):
         return f"{self.patient_name} - {self.doctor}"
 
@@ -110,7 +145,7 @@ class Prescription(models.Model):
     published = models.BooleanField(default=False)  # New field
     next_appointment_date = models.DateField(blank=True, null=True)
     treatment_result = models.TextField(blank=True, null=True)  # New field for storing results
-
+    created_at = models.DateField(blank=True, null=True, auto_now_add=True) #
     def __str__(self):
         return f"Prescription for {self.patient} on {self.treatment_date}"
 
@@ -141,7 +176,7 @@ class Medication(models.Model):
     frequency = models.CharField(max_length=50) # e.g., "Twice a day"
     duration = models.CharField(max_length=50) # e.g., "7 days"
     notes = models.TextField(blank=True, null=True) # Additional instructions
-     
+    
     def __str__(self): 
         return f"{self.name} - {self.dosage}"
 

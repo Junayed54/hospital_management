@@ -68,7 +68,8 @@ const renderPrescription = (data) => {
             </ul>`
             : "<p>No medications prescribed.</p>"}
 
-        <h2 class="font-semibold text-xl mt-6 mb-4">Diagnosis</h2>
+        <h2 class="font-semibold text-xl mt-6 mb-4">Diagnosis
+        </h2>
         ${data.tests.length > 0
             ? `<ul class="list-disc pl-5">
                 ${data.tests
