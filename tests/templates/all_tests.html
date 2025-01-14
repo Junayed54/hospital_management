@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Apply for Test</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://maps.googleapis.com/maps/api/js?key=YOUR_GOOGLE_MAPS_API_KEY&callback=initMap" async defer></script>
+</head>
+<body>
+    <div class="container mx-auto p-4">
+        <h1 class="text-2xl font-bold mb-4">Available Tests</h1>
+        <div id="testList" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            <!-- Tests will be dynamically loaded here -->
+        </div>
+
+        <!-- Modal for form submission -->
+        <div id="testFormModal" class="hidden fixed inset-0 bg-gray-500 bg-opacity-75 flex justify-center items-center">
+            <div class="bg-white p-8 rounded shadow-lg w-1/2">
+                <h2 class="text-2xl font-semibold mb-4">Confirm Test Application</h2>
+                <form id="testForm">
+                    <input type="hidden" name="test_id" id="test_id">
+                    <input type="hidden" name="latitude" id="latitude">
+                    <input type="hidden" name="longitude" id="longitude">
+
+                    <div class="mb-4">
+                        <label for="location" class="block text-sm font-medium">Selected Location</label>
+                        <p id="locationOutput" class="mt-2 text-sm text-gray-600">No location selected</p>
+                    </div>
+
+                    <button type="submit" class="bg-green-500 text-white py-2 px-4 rounded">Submit</button>
+                    <button type="button" class="bg-red-500 text-white py-2 px-4 rounded ml-4" id="closeModal">Cancel</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let map;
+        let marker;
+
+        function initMap() {
+            const mapOptions = {
+                center: { lat: 40.730610, lng: -73.935242 }, // Default to New York
+                zoom: 12
+            };
+
+            map = new google.maps.Map(document.getElementById("map"), mapOptions);
+
+            marker = new google.maps.Marker({
+                map: map,
+                draggable: true,
+                position: mapOptions.center
+            });
+
+            google.maps.event.addListener(marker, 'dragend', function(event) {
+                const latitude = event.latLng.lat();
+                const longitude = event.latLng.lng();
+
+                $('#latitude').val(latitude);
+                $('#longitude').val(longitude);
+                $('#locationOutput').text(`Lat: ${latitude}, Lng: ${longitude}`);
+            });
+        }
+
+        $(document).ready(function () {
+            const accessToken = localStorage.getItem('access_token');
+
+            if (!accessToken) {
+                window.location.href = '/login'; // Redirect to login page
+                return;
+            }
+
+            // Set up global headers for authenticated requests
+            $.ajaxSetup({
+                headers: {
+                    'Authorization': `Bearer ${accessToken}`
+                }
+            });
+
+            // Fetch available tests
+            $.ajax({
+                url: '/api/test-types/',
+                method: 'GET',
+                success: function (data) {
+                    data.forEach(test => {
+                        $('#testList').append(`
+                            <div class="border p-4 rounded shadow hover:shadow-lg">
+                                <h3 class="text-xl font-semibold">${test.name}</h3>
+                                <p class="mb-2">${test.description}</p>
+                                <p class="font-bold text-green-600">Price: $${test.price}</p>
+                                <button class="bg-blue-500 text-white py-2 px-4 rounded mt-2 test-select-btn" data-test-id="${test.id}">Select Test</button>
+                            </div>
+                        `);
+                    });
+
+                    // Handle test selection
+                    $('.test-select-btn').on('click', function () {
+                        const testId = $(this).data('test-id');
+                        $('#test_id').val(testId);
+                        $('#testFormModal').removeClass('hidden');
+                    });
+                },
+                error: function () {
+                    alert('Failed to load tests. Please try again later.');
+                }
+            });
+
+            // Close modal
+            $('#closeModal').on('click', function () {
+                $('#testFormModal').addClass('hidden');
+            });
+
+            // Submit test application
+            $('#testForm').on('submit', function (event) {
+                event.preventDefault();
+
+                const testData = {
+                    test_type: $('#test_id').val(),
+                    latitude: $('#latitude').val(),
+                    longitude: $('#longitude').val()
+                };
+
+                $.ajax({
+                    url: '/api/test-orders/',
+                    method: 'POST',
+                    contentType: 'application/json',
+                    data: JSON.stringify(testData),
+                    success: function () {
+                        alert('Test order submitted successfully!');
+                        $('#testFormModal').addClass('hidden');
+                        $('#testForm')[0].reset();
+                    },
+                    error: function () {
+                        alert('Failed to submit test order. Please try again.');
+                    }
+                });
+            });
+        });
+    </script>
+</body>
+</html>

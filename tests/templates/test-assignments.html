@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Assignments</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.0.0-beta.3/dist/tailwind.min.css" rel="stylesheet">
+</head>
+<body>
+    <div class="container mx-auto p-8">
+        
+        <div class="mb-4">
+            <button id="refresh-button" class="bg-blue-500 text-white px-4 py-2 rounded">Refresh Assignments</button>
+        </div>
+
+        <div>
+            <h2 class="text-2xl font-semibold mb-4 text-center text-blue-600">Completed Assignments</h2>
+            <div id="completed-assignments-container" class="space-y-4">
+                <!-- Completed TestCollectionAssignments will be dynamically populated here -->
+            </div>
+        </div>
+
+        <div class="mt-8">
+            <h2 class="text-2xl font-semibold mb-4 text-center text-blue-600">Assigned Assignments</h2>
+            <div id="assigned-assignments-container" class="space-y-4">
+                <!-- Assigned TestCollectionAssignments will be dynamically populated here -->
+            </div>
+        </div>
+
+        <div class="mt-8">
+            <h2 class="text-2xl font-semibold mb-4 text-center text-blue-600">In Progress Assignments</h2>
+            <div id="in-progress-assignments-container" class="space-y-4">
+                <!-- In Progress TestCollectionAssignments will be dynamically populated here -->
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        // API URL
+        const apiUrl = '/api/test-assignments/';
+
+        // Function to fetch and display assignments
+        async function fetchAssignments() {
+            const response = await fetch(apiUrl, {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': 'Bearer ' + localStorage.getItem('access_token')
+                }
+            });
+
+            if (response.ok) {
+                const { completed_assignments, assigned_assignments, in_progress_assignments } = await response.json();
+                displayAssignments('completed-assignments-container', completed_assignments);
+                displayAssignments('assigned-assignments-container', assigned_assignments);
+                displayAssignments('in-progress-assignments-container', in_progress_assignments);
+            } else {
+                alert('Failed to fetch assignments');
+            }
+        }
+
+        // Function to display assignments with upload and status update options
+        // Function to display assignments with upload and status update options
+    // Function to display assignments with upload, status update options, and update collector button
+    function displayAssignments(containerId, assignments) {
+        const container = document.getElementById(containerId);
+        container.innerHTML = '';
+
+        if (assignments.length === 0) {
+            container.innerHTML = '<p class="text-gray-500 text-center">No assignments available.</p>';
+            return;
+        }
+
+        assignments.forEach(assignment => {
+            const assignmentDiv = document.createElement('div');
+            assignmentDiv.classList.add('p-4', 'border', 'rounded', 'shadow-sm');
+
+            // If status is "In Progress", show upload form
+            const uploadForm = assignment.status === 'In Progress'
+                ? `  
+                    <form id="upload-form-${assignment.id}" class="mt-4">
+                        <label class="block mb-2 text-sm font-medium text-gray-700">Upload Result File</label>
+                        <input type="file" id="result-file-${assignment.test_order_id}" class="block w-full text-sm text-gray-500 border border-gray-300 rounded p-2 mb-2">
+                        <button type="button" onclick="uploadResult(${assignment.test_order_id})" class="bg-green-500 text-white px-4 py-2 rounded">Upload</button>
+                    </form>
+                `
+                : ''; // No upload form for "Assigned" status
+
+            // Show "Update Collector" button for "Assigned" status
+            const updateCollectorButton = assignment.status === 'Assigned'
+                ? `
+                    <button type="button" onclick="updateCollector(${assignment.id})" class="bg-yellow-500 text-white px-4 py-2 rounded mt-4">Update Collector</button>
+                `
+                : ''; // No button for other statuses
+
+            const assignmentInfo = `
+                <h2 class="font-semibold text-xl">Assignment: ${assignment.test_order}</h2>
+                <p><strong>Status:</strong> <span id="status-${assignment.id}">${assignment.status}</span></p>
+                <p><strong>Collector:</strong> ${assignment.collector || 'Unassigned'}</p>
+                <p><strong>Collection Date:</strong> ${assignment.collection_date || 'Not scheduled'}</p>
+                ${uploadForm}
+                ${updateCollectorButton}
+            `;
+
+            assignmentDiv.innerHTML = assignmentInfo;
+            container.appendChild(assignmentDiv);
+        });
+    }
+
+    // Function to upload result
+    async function uploadResult(assignmentId) {
+        console.log("Uploading result for Test Order ID:", assignmentId);
+
+        const fileInput = document.getElementById(`result-file-${assignmentId}`);
+        if (!fileInput) {
+            alert('File input not found. Please refresh the page and try again.');
+            return;
+        }
+
+        if (!fileInput.files || fileInput.files.length === 0) {
+            alert('Please select a file before uploading.');
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append('result_file', fileInput.files[0]);
+        formData.append('test_order', assignmentId); // Include the test_order ID
+
+        try {
+            const response = await fetch(`/api/upload-result/${assignmentId}/`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': 'Bearer ' + localStorage.getItem('access_token'),
+                },
+                body: formData,
+            });
+
+            if (response.ok) {
+                alert('Result file uploaded successfully.');
+                fetchAssignments();
+            } else {
+                const errorData = await response.json();
+                console.error("Error uploading result:", errorData);
+                alert('Failed to upload result file.');
+            }
+        } catch (error) {
+            alert('An error occurred during the upload process.');
+            console.error(error);
+        }
+    }
+
+    // Function to update collector
+    async function updateCollector(assignmentId) {
+        console.log("Updating collector for Assignment ID:", assignmentId);
+
+        try {
+            const response = await fetch(`/api/update-assignment-collector/${assignmentId}/`, {
+                method: 'PATCH',
+                headers: {
+                    'Authorization': 'Bearer ' + localStorage.getItem('access_token'),
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    collector: 'New Collector Name', // Update this as per your requirements
+                }),
+            });
+
+            if (response.ok) {
+                alert('Collector updated successfully.');
+                fetchAssignments(); // Refresh assignments after update
+            } else {
+                const errorData = await response.json();
+                console.error("Error updating collector:", errorData);
+                alert('Failed to update collector.');
+            }
+        } catch (error) {
+            alert('An error occurred during the update process.');
+            console.error(error);
+        }
+    }
+
+    // Event listener for the refresh button
+    document.getElementById('refresh-button').addEventListener('click', fetchAssignments);
+
+    // Initial load
+    fetchAssignments();
+
+    </script>
+    <script src="https://cdn.tailwindcss.com"></script>
+</body>
+</html>

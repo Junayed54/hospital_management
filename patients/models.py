@@ -5,12 +5,18 @@ from datetime import date, timedelta
 
 class Patient(models.Model):
     name = models.CharField(max_length=150, default="")
-    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='patient_profile')
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='patient_profile', null=True, blank=True)  # Allow user to be optional
     date_of_birth = models.DateField(null=True, blank=True)
     age = models.PositiveIntegerField(null=True, blank=True)  # Add age as a field
     gender = models.CharField(max_length=10, choices=[('Male', 'Male'), ('Female', 'Female'), ('Other', 'Other')])
+    
+    # Address-related fields
     address = models.CharField(max_length=255, blank=True)
-    medical_history = models.TextField(blank=True)
+    latitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)  # Latitude
+    longitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)  # Longitude
+    location = models.JSONField(blank=True, null=True)  # JSON field to store Google Maps response (address components, country, city, etc.)
+
+    medical_history = models.TextField(null=True, blank=True)
     emergency_contact = models.CharField(max_length=15, null=True, blank=True)
     blood_type = models.CharField(max_length=5, choices=[('A+', 'A+'), ('A-', 'A-'), ('B+', 'B+'), ('B-', 'B-'), ('O+', 'O+'), ('O-', 'O-'), ('AB+', 'AB+'), ('AB-', 'AB-')])
     insurance_provider = models.CharField(max_length=100, blank=True)
@@ -41,8 +47,23 @@ class Patient(models.Model):
             )
         return self.age
 
+    def set_location(self, address, latitude, longitude, location_data):
+        """Method to set location data, including Google Maps response."""
+        self.address = address
+        self.latitude = latitude
+        self.longitude = longitude
+        self.location = location_data
 
-
+    def update_location_from_google(self, google_location_data):
+        """Method to update location details from Google Maps response."""
+        if google_location_data:
+            self.latitude = google_location_data.get('lat')
+            self.longitude = google_location_data.get('lng')
+            self.location = google_location_data
+            self.save()
+            
+            
+            
 class BPLevel(models.Model):
     patient = models.ForeignKey(Patient, on_delete=models.CASCADE, related_name='bp_levels')
     systolic = models.PositiveIntegerField()  # Upper value

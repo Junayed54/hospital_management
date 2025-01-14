@@ -1,185 +1,4 @@
-{% comment %} {% extends 'index.html' %}
-{% load static %}
-{% block content %}
-    <div class="container mx-auto p-6" style="margin-top:150px;">
-        <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
-            <!-- Doctor Profile Section (Left side) -->
-            <div class="bg-white shadow p-6 rounded col-span-1">
-                <h2 class="font-semibold text-xl mb-4">Doctor Profile</h2>
-                <div class="space-y-2">
-                    <p><strong>Name:</strong> <span id="doctor_name">Dr. John Doe</span></p>
-                    <p><strong>Email:</strong> <span id="doctor_email">john.doe@example.com</span></p>
-                    <p><strong>Phone:</strong> <span id="doctor_phone">+1 234 567 890</span></p>
-                    <p><strong>Specialty:</strong> <span id="doctor_specialty">Cardiology</span></p>
-                    <p><strong>Experience:</strong> <span id="doctor_experience">10 years</span></p>
-                    <!-- You can add more fields as per the doctor profile -->
-                </div>
-            </div>
-
-            <!-- Dashboard Section (Right side) -->
-            <div class="col-span-3">
-                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    <!-- Circle Chart: New, Total, Old Patients -->
-                    <div class="bg-white shadow p-6 rounded col-span-1">
-                        <h2 class="font-semibold text-lg mb-2">Patients Overview</h2>
-                        <canvas id="patientsChart" width="400" height="400"></canvas>
-                    </div>
-
-                    <!-- Today's Appointments -->
-                    <div class="bg-white shadow p-6 rounded">
-                        <h2 class="font-semibold text-lg mb-2">Today's Appointments</h2>
-                        <p id="today_appointments" class="text-2xl font-bold">0</p>
-                    </div>
-
-                    <!-- Upcoming Appointments -->
-                    <div class="bg-white shadow p-6 rounded">
-                        <h2 class="font-semibold text-lg mb-2">Upcoming Appointments</h2>
-                        <ul id="upcoming_appointments" class="space-y-4">
-                            <!-- Upcoming appointments will be listed here -->
-                        </ul>
-                    </div>
-
-                    <!-- Total Patients -->
-                    <div class="bg-white shadow p-6 rounded">
-                        <h2 class="font-semibold text-lg mb-2">Total Patients</h2>
-                        <p id="total_patients" class="text-2xl font-bold">0</p>
-                    </div>
-
-                    <!-- Today's Patients -->
-                    <div class="bg-white shadow p-6 rounded">
-                        <h2 class="font-semibold text-lg mb-2">Today's Patients</h2>
-                        <p id="todays_patients" class="text-2xl font-bold">0</p>
-                    </div>
-                </div>
-            </div>
-
-
-            <div class="bg-white shadow p-6 rounded">
-                <h2 class="font-semibold text-lg mb-2">Pending Appointments</h2>
-                <ul id="pending_appointments" class="space-y-4">
-                    <!-- Pending appointments will be listed here -->
-                </ul>
-            </div>
-
-        </div>
-    </div>
-{% endblock %}
-
-{% block scripts %}
-<script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script> <!-- Include Chart.js -->
-<script>
-    document.addEventListener("DOMContentLoaded", function () {
-        // Retrieve the access token from local storage
-        const accessToken = localStorage.getItem("access_token");
-
-        if (!accessToken) {
-            alert("You are not authenticated. Please log in.");
-            window.location.href = "/login/";
-            return;
-        }
-
-        // API URL for doctor dashboard
-        const apiUrl = "/api/doctor/dashboard/";
-
-        // Fetch data using Vanilla JavaScript
-        fetch(apiUrl, {
-            method: "GET",
-            headers: {
-                "Content-Type": "application/json",
-                "Authorization": `Bearer ${accessToken}`
-            }
-        })
-        .then(response => {
-            if (!response.ok) {
-                throw new Error("Failed to fetch data. Please check your credentials.");
-            }
-            return response.json();
-        })
-        .then(data => {
-            // Update doctor profile information
-            document.getElementById("doctor_name").innerText = data.doctor_profile.name || "N/A";
-            document.getElementById("doctor_email").innerText = data.doctor_profile.email || "N/A";
-            document.getElementById("doctor_phone").innerText = data.doctor_profile.phone_number || "N/A";
-            document.getElementById("doctor_specialty").innerText = data.doctor_profile.specialty || "N/A";
-            document.getElementById("doctor_experience").innerText = data.doctor_profile.experience || "N/A";
-
-            // Update today's appointments count
-            document.getElementById("today_appointments").innerText = data.today_appointments;
-
-            // Update total patients count
-            document.getElementById("total_patients").innerText = data.total_patients;
-
-            // Update today's patients count
-            document.getElementById("todays_patients").innerText = data.todays_patients;
-
-            // Circle Chart Data: New Patients, Total Patients, Old Patients
-            const newPatients = data.new_patients;
-            const totalPatients = data.total_patients;
-            const oldPatients = totalPatients - newPatients;
-
-            const ctx = document.getElementById('patientsChart').getContext('2d');
-            const patientsChart = new Chart(ctx, {
-                type: 'pie', // You can change this to 'doughnut' for a donut chart
-                data: {
-                    labels: ['New Patients', 'Old Patients'], // Data categories
-                    datasets: [{
-                        label: 'Patients Overview',
-                        data: [newPatients, oldPatients], // Data values
-                        backgroundColor: ['#36A2EB', '#FF6384'], // Colors
-                        borderColor: ['#ffffff', '#ffffff'],
-                        borderWidth: 2
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    plugins: {
-                        legend: {
-                            position: 'top',
-                        },
-                        tooltip: {
-                            callbacks: {
-                                label: function(tooltipItem) {
-                                    return tooltipItem.label + ': ' + tooltipItem.raw;
-                                }
-                            }
-                        }
-                    }
-                }
-            });
-
-            // Update upcoming appointments
-            const upcomingAppointments = data.upcoming_appointments;
-            const upcomingList = document.getElementById("upcoming_appointments");
-            upcomingList.innerHTML = ""; // Clear existing content
-
-            upcomingAppointments.forEach(appointment => {
-                const listItem = document.createElement("li");
-                listItem.classList.add("p-2", "border-b", "border-gray-200");
-                listItem.innerHTML = `
-                    <strong>${appointment.patient_name}</strong><br>
-                    Appointment: ${new Date(appointment.appointment_date).toLocaleString()}<br>
-                    Reason: ${appointment.patient_problem}
-                `;
-                upcomingList.appendChild(listItem);
-            });
-        })
-        .catch(error => {
-            console.error("Error fetching dashboard data:", error);
-            alert("Error fetching data. Please try again later.");
-        });
-        
-    });
-
-    // Update pending appointments
-    
-
-
-</script>
-{% endblock %} {% endcomment %}
-
-
-
+{% comment %} 
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -410,4 +229,312 @@
         });
     </script>
 </body>
+</html> {% endcomment %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Doctor Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script> <!-- Chart.js CDN -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css"> <!-- Tailwind CSS -->
+</head>
+<body class="bg-gray-100 font-sans">
+    <div class="container mx-auto p-4">
+        <!-- Doctor Profile Section -->
+        <div class="bg-white shadow-md rounded p-6 mb-6">
+            <h2 class="text-xl font-semibold mb-2">Doctor Profile</h2>
+            <p><strong>Name:</strong> <span id="doctor_name">Loading...</span></p>
+            <p><strong>Email:</strong> <span id="doctor_email">Loading...</span></p>
+            <p><strong>Phone:</strong> <span id="doctor_phone">Loading...</span></p>
+            <p><strong>Specialty:</strong> <span id="doctor_specialty">Loading...</span></p>
+            <p><strong>Experience:</strong> <span id="doctor_experience">Loading...</span></p>
+            <!-- Update Button -->
+            <div class="mt-4">
+                <a href="/update_doctor/" 
+                   class="inline-block bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600">
+                    Update Profile
+                </a>
+            </div>
+        </div>
+
+        <!-- Statistics Section -->
+        <div class="grid grid-cols-3 gap-4 mb-6">
+            <div class="bg-blue-500 text-white text-center p-6 rounded shadow">
+                <h3 class="text-lg font-semibold">Today's Appointments</h3>
+                <p id="today_appointments" class="text-2xl font-bold">0</p>
+            </div>
+            <div class="bg-green-500 text-white text-center p-6 rounded shadow">
+                <h3 class="text-lg font-semibold">Total Patients</h3>
+                <p id="total_patients" class="text-2xl font-bold">0</p>
+            </div>
+            <div class="bg-red-500 text-white text-center p-6 rounded shadow">
+                <h3 class="text-lg font-semibold">Today's Patients</h3>
+                <p id="todays_patients" class="text-2xl font-bold">0</p>
+            </div>
+        </div>
+
+        <!-- Circle Chart -->
+        <div class="bg-white shadow-md rounded p-6 mb-6">
+            <canvas id="patientsChart" width="400" height="400"></canvas>
+        </div>
+
+        <!-- Upcoming Appointments Section -->
+        <div class="bg-white shadow-md rounded p-6 mb-6">
+            <h2 class="text-xl font-semibold mb-2">Upcoming Appointments</h2>
+            <ul id="upcoming_appointments" class="list-disc list-inside">
+                <li class="text-gray-500">Loading...</li>
+            </ul>
+        </div>
+
+        <!-- Pending Appointments Section -->
+        <div class="bg-white shadow-md rounded p-6">
+            <h2 class="text-xl font-semibold mb-2">Pending Appointments</h2>
+            <ul id="pending_appointments" class="list-disc list-inside">
+                <li class="text-gray-500">Loading...</li>
+            </ul>
+        </div>
+
+        <!-- Doctor Availability Section -->
+        <div class="bg-white shadow-md rounded p-6 mb-6">
+            <h2 class="text-xl font-semibold mb-2">Doctor Availability</h2>
+            <div class="space-y-4" id="availability_slots">
+                <p class="text-gray-500">Loading availability slots...</p>
+            </div>
+            <div class="mt-4">
+                <a href="/doctor-availability/update/" id="update_availability_button" class="bg-blue-500 btn text-white px-4 py-2 rounded-md hover:bg-blue-600">
+                    Update or create Availability
+                </a>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- JavaScript -->
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            // Retrieve the access token from local storage
+            const accessToken = localStorage.getItem("access_token");
+
+            if (!accessToken) {
+                alert("You are not authenticated. Please log in.");
+                window.location.href = "/login/";
+                return;
+            }
+
+            // API URLs
+            const apiUrl = "/api/doctor/dashboard/";
+            const pendingAppointmentsUrl = "/api/pending-appointments/";
+            const availabilityUrl = "/doctor/availability/";
+
+            // Fetch doctor dashboard data
+            fetch(apiUrl, {
+                method: "GET",
+                headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": `Bearer ${accessToken}`
+                }
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error("Failed to fetch data. Please check your credentials.");
+                }
+                return response.json();
+            })
+            .then(data => {
+                // Update doctor profile information
+                document.getElementById("doctor_name").innerText = data.doctor_profile.full_name || "N/A";
+                document.getElementById("doctor_email").innerText = data.doctor_profile.email || "N/A";
+                document.getElementById("doctor_phone").innerText = data.doctor_profile.phone_number || "N/A";
+                document.getElementById("doctor_specialty").innerText = data.doctor_profile.specialty || "N/A";
+                document.getElementById("doctor_experience").innerText = `${data.doctor_profile.experience_years} years` || "N/A";
+
+                // Update today's appointments count
+                document.getElementById("today_appointments").innerText = data.today_appointments;
+
+                // Update total patients count
+                document.getElementById("total_patients").innerText = data.total_patients;
+
+                // Update today's patients count
+                document.getElementById("todays_patients").innerText = data.todays_patients;
+
+                // Update upcoming appointments
+                const upcomingAppointments = data.upcoming_appointments;
+                const upcomingList = document.getElementById("upcoming_appointments");
+                upcomingList.innerHTML = ""; // Clear existing content
+
+                upcomingAppointments.forEach(appointment => {
+                    const listItem = document.createElement("li");
+                    listItem.classList.add("p-2", "border-b", "border-gray-200");
+                    listItem.innerHTML = `
+                        <strong>${appointment.patient_name}</strong><br>
+                        Appointment: ${new Date(appointment.appointment_date).toLocaleString()}<br>
+                        Reason: ${appointment.patient_problem}
+                    `;
+                    upcomingList.appendChild(listItem);
+                });
+
+                // Circle Chart Data
+                const newPatients = data.new_patients;
+                const totalPatients = data.total_patients;
+                const oldPatients = totalPatients - newPatients;
+
+                const ctx = document.getElementById('patientsChart').getContext('2d');
+                new Chart(ctx, {
+                    type: 'pie',
+                    data: {
+                        labels: ['New Patients', 'Old Patients'],
+                        datasets: [{
+                            data: [newPatients, oldPatients],
+                            backgroundColor: ['#36A2EB', '#FF6384'],
+                            borderWidth: 2
+                        }]
+                    },
+                    options: { responsive: true }
+                });
+            })
+            .catch(error => {
+                console.error("Error fetching dashboard data:", error);
+                alert("Error fetching data. Please try again later.");
+            });
+
+            // Fetch pending appointments
+            fetch(pendingAppointmentsUrl, {
+                method: "GET",
+                headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": `Bearer ${accessToken}`
+                }
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error("Failed to fetch pending appointments.");
+                }
+                return response.json();
+            })
+            .then(data => {
+                
+                const pendingList = document.getElementById("pending_appointments");
+                pendingList.innerHTML = ""; // Clear existing content
+
+                data.forEach(appointment => {
+                    const listItem = document.createElement("li");
+                    listItem.classList.add("p-2", "border-b", "border-gray-200");
+                    listItem.innerHTML = `
+                        <strong>${appointment.patient_name}</strong><br>
+                        Appointment: ${new Date(appointment.appointment_date).toLocaleString()}<br>
+                        Reason: ${appointment.patient_problem}<br>
+                        <button class="accept-btn bg-green-500 text-white px-4 py-1 rounded mt-2" data-id="${appointment.id}">
+                            Accept
+                        </button>
+                        <button class="reject-btn bg-red-500 text-white px-4 py-1 rounded mt-2" data-id="${appointment.id}">
+                            Reject
+                        </button>
+                    `;
+                    pendingList.appendChild(listItem);
+                });
+
+                // Handle Accept and Reject Actions
+                document.querySelectorAll(".accept-btn").forEach(button => {
+                    button.addEventListener("click", () => handleAppointmentAction(button.dataset.id, "accept"));
+                });
+
+                document.querySelectorAll(".reject-btn").forEach(button => {
+                    button.addEventListener("click", () => handleAppointmentAction(button.dataset.id, "reject"));
+                });
+            })
+            .catch(error => {
+                console.error("Error fetching pending appointments:", error);
+                alert("Error fetching pending appointments. Please try again later.");
+            });
+
+            // Handle Accept and Reject Actions
+            function handleAppointmentAction(appointmentId, action) {
+                fetch(`/api/pending-appointments/${appointmentId}/${action}/`, {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "Authorization": `Bearer ${accessToken}`
+                    }
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`Failed to ${action} the appointment.`);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    console.log(data);
+                    alert(data.message || `${action} operation completed.`);
+                    location.reload();
+                })
+                .catch(error => {
+                    console.error(`Error performing ${action} action:`, error);
+                    alert(`Error performing ${action} action. Please try again.`);
+                });
+            }
+
+            // Fetch Doctor's availability slots
+            fetch(availabilityUrl, {
+                method: "GET",
+                headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": `Bearer ${accessToken}`
+                }
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error("Failed to fetch availability slots.");
+                }
+                return response.json();
+            })
+            .then(data => {
+                console.log(data);
+                const availabilityContainer = document.getElementById("availability_slots");
+                availabilityContainer.innerHTML = ""; // Clear existing content
+            
+                data.forEach(slot => {
+                    const startTime = slot.start_time ? convertTo12HourFormat(slot.start_time) : "N/A";
+                    const endTime = slot.end_time ? convertTo12HourFormat(slot.end_time) : "N/A";
+            
+                    const slotItem = document.createElement("div");
+                    slotItem.classList.add("p-4", "border", "border-gray-300", "rounded", "mb-4");
+            
+                    slotItem.innerHTML = `
+                        <p><strong>Available Slot:</strong> ${startTime} - ${endTime}</p>
+                        <p><strong>Date:</strong> ${slot.date}</p>
+                        <p><strong>Doctor ID:</strong> ${slot.doctor}</p>
+                        <p><strong>Session Duration:</strong> ${slot.session_duration} minutes</p>
+                        <p><strong>Max Patients:</strong> ${slot.max_patients}</p>
+                        <p><strong>Booked Patients:</strong> ${slot.booked_patients}</p>
+                        <p><strong>Slot ID:</strong> ${slot.id}</p>
+                    `;
+            
+                    availabilityContainer.appendChild(slotItem);
+                });
+            })
+            .catch(error => {
+                console.error("Error fetching availability:", error);
+                alert("Error fetching availability slots. Please try again later.");
+            });
+            
+            // Function to convert time to 12-hour format
+            function convertTo12HourFormat(time) {
+                if (typeof time !== 'string' || !time.includes(':')) {
+                    console.error(`Invalid time format: ${time}`);
+                    return "Invalid Time";
+                }
+            
+                const [hour, minute] = time.split(':').map(Number); // Split time into hour and minute
+                const period = hour >= 12 ? 'PM' : 'AM';
+                const adjustedHour = hour % 12 || 12; // Convert 0-hour to 12 for 12-hour format
+                return `${adjustedHour}:${minute.toString().padStart(2, '0')} ${period}`;
+            }
+            
+            
+        });
+    </script>
+    
+</body>
 </html>
+

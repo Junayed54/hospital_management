@@ -1,0 +1,276 @@
+{% comment %} <!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Care Requests</title>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+</head>
+<body class="bg-gray-100 min-h-screen p-5">
+    <div class="container mx-auto">
+        <h1 class="text-3xl font-bold mb-5">Care Requests</h1>
+        
+        <!-- Section for Care Requests -->
+        <div id="care-requests" class="space-y-10"></div>
+    </div>
+
+    <script>
+        // API URL and access token
+        const apiUrl = "/care-requests/status/";
+        const accessToken = localStorage.getItem("access_token");
+
+        // Axios instance with authorization header
+        const axiosInstance = axios.create({
+            headers: {
+                Authorization: `Bearer ${accessToken}`,
+            },
+        });
+
+        // Fetch care requests from API
+        async function fetchCareRequests() {
+            try {
+                const response = await axiosInstance.get(apiUrl);
+                const data = response.data;
+
+                // Populate the care requests in the HTML
+                displayCareRequests(data);
+            } catch (error) {
+                console.error("Error fetching care requests:", error);
+                alert("Failed to fetch care requests. Please check your access token or try again.");
+            }
+        }
+
+        // Function to render care requests in the HTML
+        function displayCareRequests(data) {
+            const container = document.getElementById("care-requests");
+            container.innerHTML = ""; // Clear existing content
+
+            for (const [status, requests] of Object.entries(data)) {
+                const section = document.createElement("div");
+                section.classList.add("bg-white", "rounded-lg", "p-5", "shadow");
+
+                const title = document.createElement("h2");
+                title.classList.add("text-2xl", "font-bold", "mb-3");
+                title.textContent = `Status: ${status.replace(/_/g, " ").toUpperCase()}`;
+                section.appendChild(title);
+
+                if (requests.length === 0) {
+                    const emptyMessage = document.createElement("p");
+                    emptyMessage.classList.add("text-gray-500");
+                    emptyMessage.textContent = "No care requests available.";
+                    section.appendChild(emptyMessage);
+                } else {
+                    const list = document.createElement("ul");
+                    list.classList.add("space-y-3");
+
+                    requests.forEach((request) => {
+                        const listItem = document.createElement("li");
+                        listItem.classList.add("p-4", "border", "rounded", "shadow-sm", "bg-gray-50");
+
+                        listItem.innerHTML = `
+                            <p><strong>Patient:</strong> ${request.patient}</p>
+                            <p><strong>Description:</strong> ${request.description}</p>
+                            <p><strong>Payment:</strong> $${request.payment_amount}</p>
+                            <p><strong>Start:</strong> ${new Date(request.start_date).toLocaleString()}</p>
+                            <p><strong>End:</strong> ${new Date(request.end_date).toLocaleString()}</p>
+                        `;
+
+                        // Add button to change status if the request is pending
+                        if (status === "pending_no_caregiver" || status === "pending_with_caregiver") {
+                            const button = document.createElement("button");
+                            button.textContent = "Mark as Accepted";
+                            button.classList.add(
+                                "mt-3",
+                                "px-4",
+                                "py-2",
+                                "bg-blue-500",
+                                "text-white",
+                                "rounded",
+                                "hover:bg-blue-600"
+                            );
+
+                            button.addEventListener("click", () => updateStatus(request.id, "accepted"));
+                            listItem.appendChild(button);
+                        }
+
+                        list.appendChild(listItem);
+                    });
+
+                    section.appendChild(list);
+                }
+
+                container.appendChild(section);
+            }
+        }
+
+        // Function to update the status of a care request
+        async function updateStatus(requestId, newStatus) {
+            try {
+                const updateUrl = `/care-requests/${requestId}/update-status/`; // Adjust endpoint as needed
+                const response = await axiosInstance.patch(updateUrl, { status: newStatus });
+                if (response.status === 200) {
+                    alert("Status updated successfully!");
+                    fetchCareRequests(); // Refresh care requests
+                }
+            } catch (error) {
+                console.error("Error updating status:", error);
+                alert("Failed to update status. Please check your access token or try again.");
+            }
+        }
+
+        // Fetch care requests on page load
+        fetchCareRequests();
+    </script>
+</body>
+</html> {% endcomment %}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Care Requests</title>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+</head>
+<body class="bg-gray-100 min-h-screen p-5">
+    <div class="container mx-auto">
+        <h1 class="text-3xl font-bold mb-5 text-center">Care Requests</h1>
+        <div id="care-requests" class="space-y-10"></div>
+    </div>
+
+    <script>
+        const apiUrl = "/care-requests/status/";
+        const caregiversApiUrl = "/api/users/care-givers/";
+        const assignCaregiverApiUrl = "/api/assign-care-requests/";
+        const accessToken = localStorage.getItem("access_token");
+
+        // Axios instance with Authorization header
+        const axiosInstance = axios.create({
+            headers: { Authorization: `Bearer ${accessToken}` },
+        });
+
+        // Fetch care requests and caregivers simultaneously
+        async function fetchCareRequests() {
+            try {
+                const [careRequestsResponse, caregiversResponse] = await Promise.all([
+                    axiosInstance.get(apiUrl),
+                    axiosInstance.get(caregiversApiUrl),
+                ]);
+
+                displayCareRequests(careRequestsResponse.data, caregiversResponse.data);
+            } catch (error) {
+                console.error("Error fetching data:", error);
+                alert("Unable to fetch care requests or caregivers. Please check your access token or try again.");
+            }
+        }
+
+        // Display care requests in the DOM
+        function displayCareRequests(data, caregivers) {
+            const container = document.getElementById("care-requests");
+            container.innerHTML = ""; // Clear previous content
+
+            for (const [status, requests] of Object.entries(data)) {
+                const section = document.createElement("div");
+                section.className = "bg-white rounded-lg p-5 shadow";
+
+                const title = document.createElement("h2");
+                title.className = "text-2xl font-bold mb-3";
+                title.textContent = `Status: ${status.replace(/_/g, " ").toUpperCase()}`;
+                section.appendChild(title);
+
+                if (!requests.length) {
+                    const noRequests = document.createElement("p");
+                    noRequests.className = "text-gray-500";
+                    noRequests.textContent = "No care requests available.";
+                    section.appendChild(noRequests);
+                } else {
+                    const list = document.createElement("ul");
+                    list.className = "space-y-3";
+
+                    requests.forEach((request) => {
+                        const listItem = document.createElement("li");
+                        listItem.className = "p-4 border rounded shadow-sm bg-gray-50";
+
+                        listItem.innerHTML = `
+                            <p><strong>Patient:</strong> ${request.patient?.name || "N/A"}</p>
+                            <p><strong>Description:</strong> ${request.description}</p>
+                            <p><strong>Payment:</strong> $${request.payment_amount}</p>
+                            <p><strong>Start:</strong> ${new Date(request.start_date).toLocaleString()}</p>
+                            <p><strong>End:</strong> ${new Date(request.end_date).toLocaleString()}</p>
+                        `;
+
+                        if (status === "pending_no_caregiver") {
+                            const caregiverSelect = createCaregiverDropdown(caregivers);
+                            const assignButton = createAssignButton(request.id, caregiverSelect);
+
+                            listItem.appendChild(caregiverSelect);
+                            listItem.appendChild(assignButton);
+                        }
+
+                        list.appendChild(listItem);
+                    });
+
+                    section.appendChild(list);
+                }
+
+                container.appendChild(section);
+            }
+        }
+
+        // Create a dropdown for selecting caregivers
+        function createCaregiverDropdown(caregivers) {
+            const caregiverSelect = document.createElement("select");
+            caregiverSelect.className = "mt-3 px-4 py-2 border rounded w-full";
+            caregiverSelect.innerHTML = `
+                <option value="">Select Caregiver</option>
+                ${caregivers
+                    .map(caregiver => `<option value="${caregiver.id}">${caregiver.username}</option>`)
+                    .join("")}
+            `;
+            return caregiverSelect;
+        }
+
+        // Create a button to assign a caregiver
+        function createAssignButton(requestId, caregiverSelect) {
+            const assignButton = document.createElement("button");
+            assignButton.textContent = "Assign Caregiver";
+            assignButton.className = "mt-3 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600";
+
+            assignButton.addEventListener("click", () => {
+                const selectedCaregiverId = caregiverSelect.value;
+                if (!selectedCaregiverId) {
+                    alert("Please select a caregiver.");
+                    return;
+                }
+                assignCaregiver(requestId, selectedCaregiverId);
+            });
+
+            return assignButton;
+        }
+
+        // Assign caregiver to a request
+        async function assignCaregiver(requestId, caregiverId) {
+            try {
+                const response = await axiosInstance.post(assignCaregiverApiUrl, {
+                    request_id: requestId,
+                    caregiver_id: caregiverId,
+                });
+
+                if (response.status === 200) {
+                    alert("Caregiver assigned successfully!");
+                    fetchCareRequests(); // Refresh the list
+                }
+            } catch (error) {
+                console.error("Error assigning caregiver:", error);
+                alert("Failed to assign caregiver. Please try again.");
+            }
+        }
+
+        // Initial fetch of care requests
+        fetchCareRequests();
+    </script>
+</body>
+</html>
+

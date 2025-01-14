@@ -1,12 +1,12 @@
 from django.shortcuts import render, get_object_or_404
 from rest_framework import generics, permissions
 from rest_framework.generics import RetrieveAPIView
-from .models import Doctor, Appointment, Treatment, Prescription, Test
+from .models import Doctor, Appointment, DoctorAvailability, WaitingList, Treatment, Prescription, Test
 from patients.models import Patient, BPLevel, SugarLevel, HeartRate, CholesterolLevel
-from .serializers import DoctorSerializer, AppointmentSerializer, TreatmentSerializer, PrescriptionSerializer
+from .serializers import DoctorSerializer, AppointmentSerializer, TreatmentSerializer, PrescriptionSerializer, DoctorAvailabilitySerializer
 from patients.serializers import PatientSerializer
+from tests.serializers import TestCollectionAssignmentSerializer
 from rest_framework.exceptions import ValidationError
-
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.views import APIView
 from rest_framework.response import Response
@@ -22,8 +22,13 @@ from rest_framework.decorators import action
 from rest_framework_simplejwt.authentication import JWTAuthentication
 from django.utils import timezone
 from rest_framework.generics import UpdateAPIView
-from django.contrib.auth import get_user_model
 from rest_framework.pagination import PageNumberPagination
+from datetime import datetime, timedelta
+from tests.models import TestCollectionAssignment
+from django.db import transaction
+
+
+from django.contrib.auth import get_user_model
 User = get_user_model() 
 
 
@@ -133,17 +138,63 @@ class AppointmentCreateView(generics.CreateAPIView):
 
     def perform_create(self, serializer):
         user = self.request.user if self.request.user.is_authenticated else None
-        doctor_id = self.request.data.get('doctor')  # Get doctor ID from request data
+        print(user)
+        serializer.save(patient=user)
 
-        if doctor_id:
-            try:
-                doctor = Doctor.objects.get(id=doctor_id)
-            except Doctor.DoesNotExist:
-                return Response({"error": "Doctor not found"}, status=status.HTTP_400_BAD_REQUEST)
-            serializer.save(patient=user, doctor=doctor)
-        else:
-            return Response({"error": "Doctor ID is required"}, status=status.HTTP_400_BAD_REQUEST)
-        
+    # def perform_create(self, serializer):
+    #     user = self.request.user if self.request.user.is_authenticated else None
+    #     doctor_id = self.request.data.get('doctor')  # Doctor ID from request
+    #     availability_id = self.request.data.get('availability')  # Availability ID from request
+
+    #     if not doctor_id or not availability_id:
+    #         raise serializers.ValidationError({"error": "Doctor ID and Availability ID are required."})
+
+    #     try:
+    #         doctor = Doctor.objects.get(id=doctor_id)
+    #     except Doctor.DoesNotExist:
+    #         raise serializers.ValidationError({"error": "Doctor not found."})
+
+    #     try:
+    #         availability = DoctorAvailability.objects.get(id=availability_id, doctor=doctor)
+    #     except DoctorAvailability.DoesNotExist:
+    #         raise serializers.ValidationError({"error": "No availability found for the selected doctor."})
+
+    #     # Check if there are free slots
+    #     if availability.booked_patients >= availability.max_patients:
+    #         raise serializers.ValidationError({"error": "All slots are booked for this availability."})
+
+    #     # Calculate time per patient
+    #     time_per_patient = availability.calculate_time_per_patient()
+    #     current_time = datetime.combine(availability.date, availability.start_time)
+
+    #     # Determine the next available time slot
+    #     existing_appointments = Appointment.objects.filter(
+    #         doctor=doctor,
+    #         appointment_date__date=availability.date,
+    #         status='accepted'
+    #     ).order_by('appointment_date')
+
+    #     if existing_appointments.exists():
+    #         last_appointment_time = existing_appointments.last().appointment_date
+    #         appointment_time = last_appointment_time + timedelta(minutes=time_per_patient)
+    #     else:
+    #         appointment_time = current_time
+
+    #     # Validate that the appointment_time does not exceed the doctor's working hours
+    #     if appointment_time.time() >= availability.end_time:
+    #         raise serializers.ValidationError({"error": "The doctor does not have any available slots within working hours."})
+
+    #     # Update booked patients count
+    #     availability.booked_patients += 1
+    #     availability.save()
+
+    #     # Save the appointment
+    #     serializer.save(
+    #         patient=user,
+    #         doctor=doctor,
+    #         appointment_date=appointment_time
+    #     )
+
         
 # List Appointments View
 class AppointmentListView(generics.ListAPIView):
@@ -206,7 +257,7 @@ class PrescriptionListCreateView(generics.ListCreateAPIView):
             
             appointment = get_object_or_404(Appointment, id=appointment_id)
             patient_phone = appointment.phone_number
-
+            
             # Generate a random password for a new patient
             random_password = get_random_string(length=12)
 
@@ -218,6 +269,7 @@ class PrescriptionListCreateView(generics.ListCreateAPIView):
                     'phone_number': patient_phone,
                 }
             )
+            
             if created:
                 patient_user.set_password(random_password)
                 patient_user.save()
@@ -487,3 +539,170 @@ class CancelAppointmentView(APIView):
                 return Response({'error': 'Appointment cannot be cancelled.'}, status=status.HTTP_400_BAD_REQUEST)
         except Appointment.DoesNotExist:
             return Response({'error': 'Appointment not found.'}, status=status.HTTP_404_NOT_FOUND)
+        
+        
+        
+        
+# Availabilities
+class DoctorAvailabilityView(APIView):
+    permission_classes = [IsAuthenticated]  # Ensure only authenticated users can access
+
+    def get(self, request, *args, **kwargs):
+        """
+        Retrieve all availability slots for the authenticated doctor.
+        """
+        try:
+            doctor = Doctor.objects.get(user=request.user)
+        except Doctor.DoesNotExist:
+            return Response(
+                {"error": "You do not have a doctor profile."},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        availability = DoctorAvailability.objects.filter(doctor=doctor)
+        serializer = DoctorAvailabilitySerializer(availability, many=True)
+        return Response(serializer.data)
+
+    def post(self, request, *args, **kwargs):
+        """
+        Create a new availability slot for the authenticated doctor.
+        """
+        if request.user.role != 'doctor':
+            return Response(
+                {"error": "Permission denied. Only doctors can access this resource."},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        try:
+            doctor = Doctor.objects.get(user=request.user)
+        except Doctor.DoesNotExist:
+            return Response(
+                {"error": "You do not have a doctor profile."},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        data = request.data
+        data['doctor'] = doctor.id  # Associate with the authenticated doctor
+
+        serializer = DoctorAvailabilitySerializer(data=data)
+
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def put(self, request, availability_id, *args, **kwargs):
+        """
+        Update an existing availability slot for the authenticated doctor.
+        """
+        if request.user.role != 'doctor':
+            return Response(
+                {"error": "Permission denied. Only doctors can access this resource."},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        try:
+            doctor = Doctor.objects.get(user=request.user)
+        except Doctor.DoesNotExist:
+            return Response(
+                {"error": "You do not have a doctor profile."},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        availability = get_object_or_404(DoctorAvailability, id=availability_id, doctor=doctor)
+
+        serializer = DoctorAvailabilitySerializer(availability, data=request.data, partial=True)
+
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_200_OK)
+
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    
+    
+    def delete(self, request, availability_id, *args, **kwargs):
+        """
+        Delete an existing availability slot for the authenticated doctor.
+        """
+        if request.user.role != 'doctor':
+            return Response(
+                {"error": "Permission denied. Only doctors can access this resource."},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        try:
+            doctor = Doctor.objects.get(user=request.user)
+        except Doctor.DoesNotExist:
+            return Response(
+                {"error": "You do not have a doctor profile."},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        availability = get_object_or_404(DoctorAvailability, id=availability_id, doctor=doctor)
+
+        availability.delete()
+        return Response({"message": "Availability slot deleted successfully."}, status=status.HTTP_204_NO_CONTENT)
+
+# Staff Dashboard View
+
+
+
+# Admin views
+from accounts.serializers import *
+from rest_framework.parsers import MultiPartParser, FormParser
+class CreateDoctorView(APIView):
+    parser_classes = [MultiPartParser, FormParser]  # To handle file uploads
+
+    def post(self, request):
+        # Extract user-related data
+        user_data = {
+            'phone_number': request.data.get('phone_number'),
+            'email': request.data.get('email', ''),
+            'password': request.data.get('password'),
+            'role': 'doctor',  # Explicitly set the role for a doctor
+        }
+
+        # Extract doctor-related data
+        doctor_data = {
+            'full_name': request.data.get('full_name', ''),
+            'specialty': request.data.get('specialty', ''),
+            'license_number': request.data.get('license_number', ''),
+            'bio': request.data.get('bio', ''),
+            'experience_years': request.data.get('experience_years', 0),
+            'education': request.data.get('education', ''),
+            'consultation_fee': request.data.get('consultation_fee', 0.00),
+            'contact_email': request.data.get('contact_email', ''),
+            'contact_phone': request.data.get('contact_phone', ''),
+        }
+
+        # Get certifications (if any)
+        certification_files = request.FILES.getlist('certifications')  # Expecting a list of files
+
+        try:
+            with transaction.atomic():
+                # Create the user
+                user_serializer = UserRegistrationSerializer(data=user_data)
+                user_serializer.is_valid(raise_exception=True)
+                user = user_serializer.save()
+
+                # Pass the `user` instance when creating the doctor
+                doctor_serializer = DoctorSerializer(data=doctor_data)
+                doctor_serializer.is_valid(raise_exception=True)
+                doctor = doctor_serializer.save(user=user)  # Provide `user` to the save method
+
+                # Save certifications (if provided)
+                for cert_file in certification_files:
+                    CertificationFile.objects.create(doctor=doctor, file=cert_file)
+
+                # Prepare the response
+                user_response_data = CustomUserSerializer(user).data
+                doctor_response_data = doctor_serializer.data
+
+                return Response({
+                    'user': user_response_data,
+                    'doctor': doctor_response_data,
+                }, status=status.HTTP_201_CREATED)
+
+        except Exception as e:
+            return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)

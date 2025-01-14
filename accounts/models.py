@@ -1,6 +1,6 @@
 from django.contrib.auth.models import AbstractBaseUser, BaseUserManager, PermissionsMixin
 from django.db import models
-from django.contrib.auth.models import AbstractUser, Group, Permission
+
 
 class CustomUserManager(BaseUserManager):
     def create_user(self, phone_number, password=None, **extra_fields):
@@ -15,8 +15,28 @@ class CustomUserManager(BaseUserManager):
     def create_superuser(self, phone_number, password=None, **extra_fields):
         extra_fields.setdefault('is_staff', True)
         extra_fields.setdefault('is_superuser', True)
-
         return self.create_user(phone_number, password, **extra_fields)
+
+
+class Department(models.Model):
+    name = models.CharField(max_length=100, unique=True)
+    description = models.TextField(blank=True)
+
+    def __str__(self):
+        return self.name
+
+
+class Position(models.Model):
+    department = models.ForeignKey(Department, on_delete=models.CASCADE, related_name="positions")
+    name = models.CharField(max_length=100)
+    description = models.TextField(blank=True)
+
+    class Meta:
+        unique_together = ('department', 'name')  # Position names must be unique within a department.
+
+    def __str__(self):
+        return f"{self.name} ({self.department.name})"
+
 
 class CustomUser(AbstractBaseUser, PermissionsMixin):
     ROLE_CHOICES = (
@@ -27,47 +47,35 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
     )
     
     phone_number = models.CharField(max_length=15, unique=True)
-    email = models.EmailField(unique=True, blank=True, null=True)  
-    role = models.CharField(max_length=20, choices=ROLE_CHOICES)
+    email = models.EmailField(unique=True, blank=True, null=True)
+    role = models.CharField(max_length=20, choices=ROLE_CHOICES, default='patient')
+    department = models.ForeignKey(
+        Department, on_delete=models.SET_NULL, null=True, blank=True, related_name="users"
+    )  # Optional department field
+    position = models.ForeignKey(
+        Position, on_delete=models.SET_NULL, null=True, blank=True, related_name="users"
+    )  # Optional position field
     date_of_birth = models.DateField(blank=True, null=True)
     gender = models.CharField(
         max_length=10,
         choices=[('Male', 'Male'), ('Female', 'Female'), ('Other', 'Other')],
-        blank=True,
+        blank=True
     )
     address = models.TextField(blank=True)
     profile_picture = models.ImageField(upload_to='profile_pictures/', blank=True, null=True)
-    emergency_contact_name = models.CharField(max_length=100, blank=True)
-    emergency_contact_phone = models.CharField(max_length=15, blank=True)
     is_active = models.BooleanField(default=True)
     is_verified = models.BooleanField(default=False)
     date_joined = models.DateTimeField(auto_now_add=True)
     is_staff = models.BooleanField(default=False)
-    USERNAME_FIELD = 'phone_number'  # Use phone_number for authentication
-    REQUIRED_FIELDS = []  # No additional required fields beyond phone_number
+    
+    USERNAME_FIELD = 'phone_number'
+    REQUIRED_FIELDS = []
     
     objects = CustomUserManager()
 
-    class Meta:
-        abstract = True
-
-    groups = models.ManyToManyField(
-        Group,
-        related_name='custom_user_groups',
-        blank=True,
-        help_text='The groups this user belongs to.',
-        verbose_name='groups',
-    )
-    user_permissions = models.ManyToManyField(
-        Permission,
-        related_name='custom_user_permissions',  # Add related_name to avoid clash
-        blank=True,
-        help_text='Specific permissions for this user.',
-        verbose_name='user permissions',
-    )
-    
     def __str__(self):
-        return self.phone_number
+        role_str = f"{self.role} - {self.department.name}" if self.department else self.role
+        return f"{self.phone_number} ({role_str})"
 
 
 class User(CustomUser):  # Concrete implementation

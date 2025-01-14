@@ -1,0 +1,100 @@
+<!-- caregiver_create_form.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Create Caregiver</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+</head>
+<body>
+    <div class="container mx-auto p-8">
+        <h2 class="text-2xl font-bold mb-4">Create Caregiver</h2>
+
+        <form id="caregiverForm" class="space-y-4">
+            <!-- User Registration Fields -->
+            <div class="mb-4">
+                <label for="phone_number" class="block text-gray-700">Phone Number:</label>
+                <input type="text" id="phone_number" name="phone_number" class="w-full px-3 py-2 border rounded-md">
+            </div>
+            <div class="mb-4">
+                <label for="email" class="block text-gray-700">Email:</label>
+                <input type="email" id="email" name="email" class="w-full px-3 py-2 border rounded-md">
+            </div>
+            <div class="mb-4">
+                <label for="password" class="block text-gray-700">Password:</label>
+                <input type="password" id="password" name="password" class="w-full px-3 py-2 border rounded-md" required>
+            </div>
+
+            <div class="mb-4">
+                <label for="department" class="block text-gray-700">Department:</label>
+                <select id="department" name="department" class="w-full px-3 py-2 border rounded-md">
+                    <option value="" disabled selected>Select a department</option>
+                </select>
+            </div>
+            <div class="mb-4">
+                <label for="position" class="block text-gray-700">Position:</label>
+                <input type="text" id="position" name="position" class="w-full px-3 py-2 border rounded-md" placeholder="Enter or select position">
+            </div>
+            
+            <div class="mb-4">
+                <label for="role" class="block text-gray-700">Role:</label>
+                <select id="role" name="role" class="w-full px-3 py-2 border rounded-md">
+                    <option value="staff">Staff</option>
+                    {% comment %} <option value="patient">Patient</option> {% endcomment %}
+                </select>
+            </div>
+
+            <!-- Caregiver Specific Fields -->
+            <div class="mb-4">
+                <label for="full_name" class="block text-gray-700">Full Name:</label>
+                <input type="text" id="full_name" name="full_name" class="w-full px-3 py-2 border rounded-md">
+            </div>
+            <div class="mb-4">
+                <label for="gender" class="block text-gray-700">Gender:</label>
+                <select id="gender" name="gender" class="w-full px-3 py-2 border rounded-md">
+                    <option value="male">Male</option>
+                    <option value="female">Female</option>
+                    <option value="other">Other</option>
+                </select>
+            </div>
+            <div class="mb-4">
+                <label for="date_of_birth" class="block text-gray-700">Date of Birth:</label>
+                <input type="date" id="date_of_birth" name="date_of_birth" class="w-full px-3 py-2 border rounded-md">
+            </div>
+            <div class="mb-4">
+                <label for="address" class="block text-gray-700">Address:</label>
+                <textarea id="address" name="address" class="w-full px-3 py-2 border rounded-md"></textarea>
+            </div>
+            <div class="mb-4">
+                <label for="certifications" class="block text-gray-700">Certifications:</label>
+                <textarea id="certifications" name="certifications" class="w-full px-3 py-2 border rounded-md"></textarea>
+            </div>
+            <div class="mb-4">
+                <label for="bio" class="block text-gray-700">Bio:</label>
+                <textarea id="bio" name="bio" class="w-full px-3 py-2 border rounded-md"></textarea>
+            </div>
+            <div class="mb-4">
+                <label for="experience_years" class="block text-gray-700">Experience (years):</label>
+                <input type="number" id="experience_years" name="experience_years" class="w-full px-3 py-2 border rounded-md">
+            </div>
+            <div class="mb-4">
+                <label for="available_from" class="block text-gray-700">Available From:</label>
+                <input type="datetime-local" id="available_from" name="available_from" class="w-full px-3 py-2 border rounded-md">
+            </div>
+            <div class="mb-4">
+                <label for="available_to" class="block text-gray-700">Available To:</label>
+                <input type="datetime-local" id="available_to" name="available_to" class="w-full px-3 py-2 border rounded-md">
+            </div>
+
+            <button type="submit" class="w-full bg-blue-500 text-white px-4 py-2 rounded-md">Create Caregiver</button>
+        </form>
+
+        <div id="error-message" class="mt-4 text-red-500 hidden"></div>
+        <div id="success-message" class="mt-4 text-green-500 hidden"></div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <script src="../static/js/caregiver_create.js"></script>
+</body>
+</html>

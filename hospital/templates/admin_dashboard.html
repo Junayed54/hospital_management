@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 min-h-screen flex items-center justify-center">
+    <div class="max-w-4xl w-full bg-white shadow-lg rounded-lg p-8">
+        <h1 class="text-3xl font-bold text-center mb-6">Admin Dashboard</h1>
+        <p class="text-center text-gray-600 mb-8">Manage various records easily by selecting an option below.</p>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
+            <!-- Doctor Button -->
+            <a href="/create-doctor/" class="block text-center bg-blue-500 text-white py-3 rounded-lg shadow-lg hover:bg-blue-600">
+                <span class="text-xl font-semibold">Create Doctor</span>
+            </a>
+            <!-- Staff Button -->
+            <a href="/admin/create-staff/" class="block text-center bg-green-500 text-white py-3 rounded-lg shadow-lg hover:bg-green-600">
+                <span class="text-xl font-semibold">Create Staff</span>
+            </a>
+            <a href="/create-care-giver/" class="block text-center bg-green-500 text-white py-3 rounded-lg shadow-lg hover:bg-green-600">
+                <span class="text-xl font-semibold">Create-Care-Giver</span>
+            </a>
+            <!-- Patient Button -->
+            <a href="" class="block text-center bg-purple-500 text-white py-3 rounded-lg shadow-lg hover:bg-purple-600">
+                <span class="text-xl font-semibold">Create Patient</span>
+            </a>
+            <!-- Appointment Button -->
+            <a href="/create-department/" class="block text-center bg-orange-500 text-white py-3 rounded-lg shadow-lg hover:bg-orange-600">
+                <span class="text-xl font-semibold">Create Departments</span>
+            </a>
+        </div>
+    </div>
+</body>
+</html>

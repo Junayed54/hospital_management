@@ -1,10 +1,11 @@
 from django.urls import path
-from .views import PatientDashboardAPIView, PatientAppointmentsView, UpdatePatientView
+from .views import PatientDetailAPIView, PatientDashboardAPIView, PatientAppointmentsView, UpdatePatientView
 from django.views.generic import TemplateView
 urlpatterns = [
     path('api/dashboard/', PatientDashboardAPIView.as_view(), name='patient_dashboard_api'),
     path('api/patient-appointments/', PatientAppointmentsView.as_view(), name='patient-appointments'),
     path('patient/update/', UpdatePatientView.as_view(), name='update_patient'),
+    path('api/patient-details/', PatientDetailAPIView.as_view(), name='patient-details'),
 ]
 
 # Templates

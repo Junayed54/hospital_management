@@ -1,9 +1,9 @@
 from django.contrib import admin
-from .models import Doctor, DoctorAvailability, Appointment, Treatment, Prescription, Notification, Medication, Test
+from .models import Doctor, DoctorAvailability, WaitingList, Appointment, Treatment, Prescription, Notification, Medication, Test
 
 # Custom admin configuration for Doctor
 class DoctorAdmin(admin.ModelAdmin):
-    list_display = ('full_name', 'user', 'specialty', 'license_number', 'experience_years', 'consultation_fee')
+    list_display = ('id', 'full_name', 'user', 'specialty', 'license_number', 'experience_years', 'consultation_fee')
     search_fields = ('full_name', 'specialty', 'license_number')
     list_filter = ('specialty', 'experience_years')
     fieldsets = (
@@ -14,9 +14,40 @@ class DoctorAdmin(admin.ModelAdmin):
 
 @admin.register(DoctorAvailability)
 class DoctorAvailabilityAdmin(admin.ModelAdmin):
-    list_display = ['doctor', 'date', 'start_time', 'end_time', 'max_patients', 'booked_patients']
-    list_filter = ['doctor', 'date']
+    list_display = (
+        'id',
+        'doctor', 
+        'date', 
+        'start_time', 
+        'session_duration', 
+        'max_patients', 
+        'booked_patients'
+    )
+    list_filter = ('doctor', 'date')
+    search_fields = ('doctor__name', 'date')
+    ordering = ('date', 'start_time')
+    readonly_fields = ('booked_patients',)
 
+    def has_add_permission(self, request):
+        """
+        Restrict doctors from adding their availability more than once for the same date and time.
+        """
+        return super().has_add_permission(request)
+
+    def has_change_permission(self, request, obj=None):
+        """
+        Allow changes to availability only before any appointments are booked.
+        """
+        if obj and obj.booked_patients > 0:
+            return False
+        return super().has_change_permission(request, obj=obj)
+
+@admin.register(WaitingList)
+class WaitingListAdmin(admin.ModelAdmin):  # Fixed class name
+    list_display = ('availability', 'patient', 'requested_at')  # Fields to display in the list view
+    list_filter = ('availability__doctor', 'requested_at')  # Filters for the admin panel
+    search_fields = ('patient__name', 'availability__doctor__name')  # Searchable fields
+    ordering = ('requested_at',)  # Order by requested_at field
 # Custom admin configuration for Appointment
 @admin.register(Appointment)
 class AppointmentAdmin(admin.ModelAdmin):
@@ -122,3 +153,5 @@ class NotificationAdmin(admin.ModelAdmin):
             'classes': ('collapse',),
         }),
     )
+    
+    

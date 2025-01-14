@@ -1,9 +1,11 @@
 from django.db import models
 from accounts.models import CustomUser
 from django.conf import settings
-from django.contrib.auth import get_user_model
+from datetime import datetime, timedelta
+
 from .utils import RtcTokenBuilder 
 from patients.models import Patient
+from django.contrib.auth import get_user_model
 User = get_user_model()
 
 
@@ -34,23 +36,93 @@ class Doctor(models.Model):
     def __str__(self):
         return f"Dr. {self.full_name} ({self.specialty})"
 
+def certification_upload_path(instance, filename):
+    """Generate a unique upload path for certification files."""
+    return os.path.join('certifications', str(instance.doctor.id), filename)
+
+class CertificationFile(models.Model):
+    doctor = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE, 
+        related_name='certifications'
+    )
+    file = models.FileField(upload_to=certification_upload_path)
+    uploaded_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"Certification for {self.doctor.full_name}: {os.path.basename(self.file.name)}"
+
+
+
+
 class DoctorAvailability(models.Model):
     doctor = models.ForeignKey(Doctor, on_delete=models.CASCADE, related_name='availability')
-    date = models.DateField()  # Specific date for availability
-    start_time = models.TimeField()  # Start time of availability
-    end_time = models.TimeField()  # End time of availability
-    max_patients = models.PositiveIntegerField(default=1)  # Maximum number of patients allowed
-    booked_patients = models.PositiveIntegerField(default=0)  # Number of patients already booked
+    date = models.DateField()  
+    start_time = models.TimeField()  
+    session_duration = models.PositiveIntegerField(help_text="Total session duration in minutes")  
+    max_patients = models.PositiveIntegerField(default=1, help_text="Maximum number of patients for this session")
+    booked_patients = models.PositiveIntegerField(default=0)
 
     class Meta:
         unique_together = ('doctor', 'date', 'start_time')
 
-    def is_available(self):
-        """Check if there is still room for more patients."""
-        return self.booked_patients < self.max_patients
+    def calculate_time_per_patient(self):
+        """Calculate how much time each patient will receive."""
+        return self.session_duration // self.max_patients
+
+    def assign_appointment_time(self):
+        """Assign specific times for all accepted appointments."""
+        appointments = Appointment.objects.filter(
+            doctor=self.doctor,
+            appointment_date__date=self.date,
+            status='accepted'
+        ).order_by('created_at')
+
+        time_per_patient = self.calculate_time_per_patient()
+        current_time = datetime.combine(self.date, self.start_time)
+
+        for appointment in appointments:
+            appointment.appointment_date = current_time
+            appointment.save(update_fields=['appointment_date'])
+            current_time += timedelta(minutes=time_per_patient)
+
+    def promote_pending_patient(self):
+        """Promote the first pending patient to accepted if a slot becomes available."""
+        pending_appointment = Appointment.objects.filter(
+            doctor=self.doctor,
+            appointment_date__date=self.date,
+            status='pending'
+        ).order_by('created_at').first()
+
+        if pending_appointment:
+            pending_appointment.status = 'accepted'
+            pending_appointment.save(update_fields=['status'])
+            self.assign_appointment_time()
+
+    def get_end_time(self):
+        """
+        Calculate the end time based on the start time and session duration.
+        """
+        start_datetime = datetime.combine(self.date, self.start_time)
+        end_datetime = start_datetime + timedelta(minutes=self.session_duration)
+        return end_datetime.time()
+    
+    
+    def __str__(self):
+        return f"Availability for {self.doctor} on {self.date} ({self.session_duration} mins, {self.max_patients} patients)"
+
+
+
+class WaitingList(models.Model):
+    availability = models.ForeignKey(DoctorAvailability, on_delete=models.CASCADE, related_name='waiting_list')
+    patient = models.ForeignKey(Patient, on_delete=models.CASCADE)
+    requested_at = models.DateTimeField(auto_now_add=True)  # To prioritize by request time
+
+    class Meta:
+        unique_together = ('availability', 'patient')
 
     def __str__(self):
-        return f"Availability for {self.doctor} on {self.date} from {self.start_time} to {self.end_time} (Booked: {self.booked_patients}/{self.max_patients})"
+        return f"{self.patient} waiting for {self.availability}"
 
 
 
@@ -61,7 +133,7 @@ class Appointment(models.Model):
         ('rejected', 'Rejected'),
         ('cancelled', 'Cancelled'),
     ]
-    
+
     doctor = models.ForeignKey(Doctor, on_delete=models.SET_NULL, null=True, blank=True)
     patient = models.ForeignKey(Patient, on_delete=models.SET_NULL, null=True, blank=True)
     patient_name = models.CharField(max_length=250)
@@ -75,24 +147,40 @@ class Appointment(models.Model):
     status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='pending')
 
     class Meta:
-        constraints = [
-            models.UniqueConstraint(fields=['doctor', 'appointment_date'], name='unique_doctor_date'),
-            models.UniqueConstraint(fields=['doctor', 'appointment_date', 'phone_number'], name='unique_doctor_appointment')
-        ]
+        # constraints = [
+        #     models.UniqueConstraint(fields=['doctor', 'appointment_date'], name='unique_doctor_date'),
+        #     models.UniqueConstraint(fields=['doctor', 'appointment_date', 'phone_number'], name='unique_doctor_appointment')
+        # ]
+        pass
 
     def save(self, *args, **kwargs):
-        is_new = self.pk is None
-        if is_new:
-            super().save(*args, **kwargs)
-        if self.appointment_date and not self.video_link:
+        is_new = self.pk is None  # Check if this is a new instance
+
+        # Save the instance first
+        super().save(*args, **kwargs)
+
+        # Handle video link generation for new appointments
+        if is_new and self.appointment_date and not self.video_link:
             try:
                 self.generate_agora_link()
                 super().save(update_fields=['video_link'])
             except Exception as e:
-                # Handle or log the error
-                pass
-        else:
-            super().save(*args, **kwargs)
+                # Log the error for debugging purposes
+                logger.error(f"Error generating Agora link for Appointment {self.id}: {str(e)}")
+
+        # Assign appointment time for accepted appointments
+        if is_new and self.status == 'accepted':
+            availability = DoctorAvailability.objects.filter(
+                doctor=self.doctor,
+                date=self.appointment_date.date()
+            ).first()
+
+            if availability:
+                try:
+                    availability.assign_appointment_time()
+                except Exception as e:
+                    # Log the error for debugging purposes
+                    logger.error(f"Error assigning appointment time for Appointment {self.id}: {str(e)}")
 
     def generate_agora_link(self):
         app_id = settings.AGORA_APP_ID
@@ -106,12 +194,22 @@ class Appointment(models.Model):
 
     
     def cancel(self):
-        if self.status not in ['accepted', 'rejected']:
+        """Cancel an appointment and handle promotion of pending patients."""
+        if self.status in ['accepted', 'pending']:
             self.status = 'cancelled'
             self.save(update_fields=['status'])
+
+            # Handle promotion of pending patients
+            availability = DoctorAvailability.objects.filter(
+                doctor=self.doctor,
+                date=self.appointment_date.date()
+            ).first()
+
+            if availability:
+                availability.promote_pending_patient()
         else:
-            raise ValueError("Cannot cancel an appointment that has already been accepted or rejected.")
-        
+            raise ValueError("Cannot cancel an appointment that has already been rejected or cancelled.")
+
         
     def __str__(self):
         return f"{self.patient_name} - {self.doctor}"
@@ -190,3 +288,5 @@ class Notification(models.Model):
     scheduled_time = models.DateTimeField() # When the notification should be sent 
     def __str__(self): 
         return f"Notification for {self.user.username} at {self.scheduled_time}"
+
+

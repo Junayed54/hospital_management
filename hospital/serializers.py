@@ -1,15 +1,91 @@
 from rest_framework import serializers
 from django.db import transaction
-from .models import Doctor, Appointment, Treatment, Prescription, Medication, Notification, Test
+from .models import *
 from accounts.serializers import CustomUserSerializer
 from patients.serializers import PatientSerializer
+from datetime import datetime, timedelta
+
+
+class DoctorAvailabilitySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = DoctorAvailability
+        fields = [
+            'id',
+            'doctor',
+            'date',
+            'start_time',
+            'session_duration',
+            'max_patients',
+            'booked_patients',
+        ]
+        read_only_fields = ['booked_patients']
+
+    def validate(self, data):
+        """
+        Validate session_duration and max_patients to ensure logical values.
+        """
+        if data.get('max_patients', 1) <= 0:
+            raise serializers.ValidationError({"max_patients": "The maximum number of patients must be at least 1."})
+        if data.get('session_duration', 0) <= 0:
+            raise serializers.ValidationError({"session_duration": "Session duration must be greater than 0 minutes."})
+
+        # Ensure no other availability exists for the same doctor at the same date and time
+        doctor = data.get('doctor')
+        date = data.get('date')
+        start_time = data.get('start_time')
+
+        # Check if an availability exists for this doctor at the same time
+        if DoctorAvailability.objects.filter(doctor=doctor, date=date, start_time=start_time).exists():
+            raise serializers.ValidationError("This doctor already has availability at this date and time.")
+
+        return data
+
+    def create(self, validated_data):
+        """
+        Ensure unique availability per doctor, date, and start time.
+        """
+        availability = super().create(validated_data)
+        return availability
+
+    def update(self, instance, validated_data):
+        """
+        Allow updating of availability details while ensuring data integrity.
+        """
+        # Check for uniqueness again when updating
+        doctor = validated_data.get('doctor', instance.doctor)
+        date = validated_data.get('date', instance.date)
+        start_time = validated_data.get('start_time', instance.start_time)
+
+        # Ensure no other availability exists for the same doctor at the same date and time
+        if DoctorAvailability.objects.filter(doctor=doctor, date=date, start_time=start_time).exclude(id=instance.id).exists():
+            raise serializers.ValidationError("This doctor already has availability at this date and time.")
+
+        return super().update(instance, validated_data)
+
+class CertificationFileSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = CertificationFile
+        fields = ['id', 'file']
+
 class DoctorSerializer(serializers.ModelSerializer):
     user = CustomUserSerializer(read_only=True)
+    availability = DoctorAvailabilitySerializer(many=True, read_only=True)
+    certifications = CertificationFileSerializer(many=True, read_only=True)  # Nested certifications
 
     class Meta:
         model = Doctor
-        fields = ['id','full_name', 'user', 'specialty', 'license_number', 'bio', 'experience_years', 'education', 'consultation_fee', 'contact_email', 'contact_phone']
+        fields = ['id', 'full_name', 'user', 'specialty', 'license_number', 'bio', 'experience_years', 
+                  'education', 'consultation_fee', 'contact_email', 'contact_phone', 'availability', 'certifications']
+    # def create(self, validated_data):
+    #     # Extract user data
+    #     user_data = validated_data.pop('user')
+    #     user = User.objects.create_user(**user_data)
 
+    #     # Create doctor
+    #     doctor = Doctor.objects.create(user=user, **validated_data)
+    #     return doctor
+    
+    
 # class PatientSerializer(serializers.ModelSerializer):
 #     user = CustomUserSerializer(read_only=True)
 
@@ -18,31 +94,124 @@ class DoctorSerializer(serializers.ModelSerializer):
 #         fields = ['id', 'user', 'date_of_birth', 'gender', 'address', 'medical_history', 'emergency_contact', 'blood_type', 'insurance_provider', 'insurance_policy_number']
 
 class AppointmentSerializer(serializers.ModelSerializer):
-    
     class Meta:
         model = Appointment
-        fields = ['id', 'doctor', 'patient', 'patient_name', 'phone_number', 'email', 'address', 'appointment_date', 'video_link', 'patient_problem', 'status']
+        fields = [
+            'id',
+            'doctor',
+            'patient',
+            'patient_name',
+            'phone_number',
+            'email',
+            'address',
+            'appointment_date',
+            'video_link',
+            'patient_problem',
+            'status',
+        ]
         extra_kwargs = {
-            'appointment_date': {'required': True},  # Ensure this field is required
+            'appointment_date': {'read_only': True},  # Derived dynamically
         }
 
     def create(self, validated_data):
         """
-        Overriding create to validate the appointment_date and link an appointment 
-        with the authenticated user if available.
+        Automatically assign an appointment time based on availability.
         """
-        # Validate appointment_date explicitly
-        if not validated_data.get('appointment_date'):
-            raise serializers.ValidationError({"appointment_date": "This field is required."})
+        doctor = validated_data.get('doctor')
+        patient = validated_data.get('patient')
+        print(doctor, patient)
+        availability_id = self.context['request'].data.get('availability')  # Get availability ID from request
 
-        # Access user from context and link to the appointment
-        request_user = self.context.get('request').user
-        if request_user and request_user.is_authenticated:
-            validated_data['user'] = request_user  # Link appointment to authenticated user
+        if not availability_id:
+            raise serializers.ValidationError({"availability": "This field is required."})
 
+        try:
+            availability = DoctorAvailability.objects.get(id=availability_id, doctor=doctor)
+        except DoctorAvailability.DoesNotExist:
+            raise serializers.ValidationError({"availability": "Invalid availability ID for the specified doctor."})
+
+        # Check for available slots
+        if availability.booked_patients >= availability.max_patients:
+            # Add to waiting list if no slots are available
+            WaitingList.objects.create(availability=availability, patient=patient)
+            raise serializers.ValidationError({"availability": "No slots available. Added to the waiting list."})
+
+        # Calculate appointment time
+        time_per_patient = availability.calculate_time_per_patient()
+        current_time = datetime.combine(availability.date, availability.start_time)
+        existing_appointments = Appointment.objects.filter(
+            doctor=doctor,
+            appointment_date__date=availability.date,
+            status='accepted'
+        ).order_by('appointment_date')
+
+        if existing_appointments.exists():
+            last_appointment_time = existing_appointments.last().appointment_date
+            appointment_time = last_appointment_time + timedelta(minutes=time_per_patient)
+        else:
+            appointment_time = current_time
+
+        # Validate appointment time
+        if appointment_time.time() >= availability.get_end_time():
+            raise serializers.ValidationError({"availability": "No available slots within working hours."})
+
+        # Update availability and save appointment
+        availability.booked_patients += 1
+        availability.save()
+
+        validated_data['appointment_date'] = appointment_time
         return super().create(validated_data)
-        
-        
+
+    def update(self, instance, validated_data):
+        """
+        Override update to handle status changes, particularly cancellations.
+        """
+        # If status is being updated to 'cancelled', update doctor availability
+        if validated_data.get('status') == 'cancelled' and instance.status != 'cancelled':
+            availability = DoctorAvailability.objects.filter(
+                doctor=instance.doctor,
+                date=instance.appointment_date.date()
+            ).first()
+
+            if availability:
+                availability.booked_patients = max(0, availability.booked_patients - 1)
+                availability.save()
+
+        return super().update(instance, validated_data)
+
+
+
+class WaitingListSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = WaitingList
+        fields = [
+            'id',
+            'availability',
+            'patient',
+            'requested_at',
+        ]
+        read_only_fields = ['requested_at']
+
+    def validate(self, data):
+        """
+        Ensure that the patient is not already on the waiting list for the same availability.
+        """
+        if WaitingList.objects.filter(
+            availability=data.get('availability'),
+            patient=data.get('patient')
+        ).exists():
+            raise serializers.ValidationError("This patient is already on the waiting list for this availability.")
+        return data
+
+    def create(self, validated_data):
+        """
+        Add a patient to the waiting list.
+        """
+        waiting_entry = super().create(validated_data)
+        return waiting_entry
+    
+    
+
 class TreatmentSerializer(serializers.ModelSerializer):
     class Meta:
         model = Treatment

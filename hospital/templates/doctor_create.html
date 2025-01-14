@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Create Doctor</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 py-10">
+    <div class="max-w-4xl mx-auto bg-white p-6 shadow-lg rounded-lg">
+        <h2 class="text-2xl font-bold mb-4">Create Doctor Profile</h2>
+        <form id="doctorForm" class="space-y-4" enctype="multipart/form-data">
+            <!-- User Fields -->
+            <div>
+                <label class="block font-semibold">Phone Number</label>
+                <input type="text" name="phone_number" class="w-full p-2 border rounded" required>
+            </div>
+            <div>
+                <label class="block font-semibold">Password</label>
+                <input type="password" name="password" class="w-full p-2 border rounded" required>
+            </div>
+            <div>
+                <label class="block font-semibold">Email</label>
+                <input type="email" name="email" class="w-full p-2 border rounded">
+            </div>
+
+            <!-- Doctor Fields -->
+            <div>
+                <label class="block font-semibold">Full Name</label>
+                <input type="text" name="full_name" class="w-full p-2 border rounded">
+            </div>
+            <div>
+                <label class="block font-semibold">Specialty</label>
+                <input type="text" name="specialty" class="w-full p-2 border rounded">
+            </div>
+            <div>
+                <label class="block font-semibold">License Number</label>
+                <input type="text" name="license_number" class="w-full p-2 border rounded">
+            </div>
+            <div>
+                <label class="block font-semibold">Bio</label>
+                <textarea name="bio" class="w-full p-2 border rounded"></textarea>
+            </div>
+            <div>
+                <label class="block font-semibold">Experience Years</label>
+                <input type="number" name="experience_years" class="w-full p-2 border rounded" min="0">
+            </div>
+            <div>
+                <label class="block font-semibold">Education</label>
+                <input type="text" name="education" class="w-full p-2 border rounded">
+            </div>
+            <div>
+                <label class="block font-semibold">Consultation Fee</label>
+                <input type="number" name="consultation_fee" class="w-full p-2 border rounded" step="0.01" min="0">
+            </div>
+            <div>
+                <label class="block font-semibold">Contact Email</label>
+                <input type="email" name="contact_email" class="w-full p-2 border rounded">
+            </div>
+            <div>
+                <label class="block font-semibold">Contact Phone</label>
+                <input type="text" name="contact_phone" class="w-full p-2 border rounded">
+            </div>
+
+            <!-- Department Field -->
+            <div>
+                <label class="block font-semibold">Department</label>
+                <select name="department" class="w-full p-2 border rounded">
+                    <option value="">Select Department</option>
+                    <option value="1">Cardiology</option>
+                    <option value="2">Neurology</option>
+                    <option value="3">Orthopedics</option>
+                    <!-- Add more departments here -->
+                </select>
+            </div>
+
+            <!-- Position Field -->
+            <div>
+                <label class="block font-semibold">Position</label>
+                <select name="position" class="w-full p-2 border rounded">
+                    <option value="">Select Position</option>
+                    <option value="1">Senior Doctor</option>
+                    <option value="2">Junior Doctor</option>
+                    <option value="3">Resident</option>
+                    <!-- Add more positions here -->
+                </select>
+            </div>
+
+            <!-- Certification Field (PDF Upload) -->
+            <div>
+                <label class="block font-semibold">Certifications (PDF)</label>
+                <input type="file" name="certifications" class="w-full p-2 border rounded" accept=".pdf" multiple>
+                <small class="text-gray-600">Upload multiple certification files (PDF only).</small>
+            </div>
+
+            <!-- Submit Button -->
+            <button type="submit" class="w-full bg-blue-500 text-white py-2 px-4 rounded hover:bg-blue-600">
+                Submit
+            </button>
+        </form>
+
+        <!-- Response Message -->
+        <div id="responseMessage" class="mt-4 hidden p-4 rounded bg-green-100 text-green-700"></div>
+    </div>
+    {% load static %}
+    <script src="{% static 'js/doctor/doctor_form.js' %}"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+</body>
+</html>

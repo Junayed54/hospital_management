@@ -1,13 +1,14 @@
 from rest_framework import generics, status
 from rest_framework.views import APIView
 from rest_framework.response import Response
-
+from django.shortcuts import get_object_or_404
 from django.contrib.auth import update_session_auth_hash
 from rest_framework.permissions import IsAuthenticated
 from django.contrib.auth.hashers import check_password
 from rest_framework_simplejwt.tokens import RefreshToken
-from .models import CustomUser
-from .serializers import UserRegistrationSerializer, UserLoginSerializer
+from .models import CustomUser, Department, Position
+from .serializers import *
+from .permissions import *
 from hospital.models import Appointment 
 from rest_framework_simplejwt.tokens import RefreshToken
 # User Signup View
@@ -90,3 +91,108 @@ class PasswordUpdateView(APIView):
         update_session_auth_hash(request, user)
 
         return Response({"message": "Password updated successfully."}, status=status.HTTP_200_OK)
+    
+    
+    
+    
+class CreateDepartmentView(APIView):
+    permission_classes = [IsAuthenticated]  # Only authenticated users can access this view
+
+    def post(self, request):
+        # Check if the user is authenticated
+        if not request.user.is_authenticated:
+            return Response({'error': 'Authentication required'}, status=status.HTTP_401_UNAUTHORIZED)
+
+        # Extract department data
+        department_data = {
+            'name': request.data.get('name'),
+            'description': request.data.get('description', ''),
+        }
+        
+
+        try:
+            # Create the department using the serializer
+            department_serializer = DepartmentSerializer(data=department_data)
+            department_serializer.is_valid(raise_exception=True)
+            
+            department = department_serializer.save()
+
+            # Return success response
+            return Response({
+                'department': department_serializer.data
+            }, status=status.HTTP_201_CREATED)
+
+        except Exception as e:
+            return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+class DepartmentListView(APIView):
+    permission_classes = [IsStaffOrAdminUser]
+
+    def get(self, request):
+        departments = Department.objects.all()
+        serializer = DepartmentSerializer(departments, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+    
+    
+    
+    
+class DepartmentDetailView(APIView):
+    permission_classes = [IsStaffUserAndDepartmentMatch]
+
+    def get(self, request, pk):
+        department = get_object_or_404(Department, pk=pk)
+        users_data = []
+
+        self.check_object_permissions(request, department)
+        # Get all users belonging to the department
+        department_users = department.users.all()
+
+        for user in department_users:
+            users_data.append({
+                "id": user.id,
+                "phone_number": user.phone_number,
+                "email": user.email,
+                "position": user.position.name if user.position else None,  # Get the position name if available
+                "role": user.role,
+                "gender": user.gender,
+            })
+
+        return Response({
+            "department": {
+                "id": department.id,
+                "name": department.name,
+                "description": department.description,
+            },
+            "users": users_data
+        })
+        
+        
+class CareGiverUsersAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, *args, **kwargs):
+        try:
+            # Retrieve the "Care-Giver" department
+            care_giver_department = Department.objects.get(name="Care-giver")
+
+            # Filter users belonging to the "Care-Giver" department
+            care_giver_users = User.objects.filter(department=care_giver_department)
+
+            # Serialize user data along with caregiver's full name
+            data = []
+            for user in care_giver_users:
+                caregiver = getattr(user, 'caregiver', None)  # Check if a related caregiver exists
+                data.append({
+                    "id": user.id,
+                    "username": user.caregiver.full_name,
+                    "email": user.email,
+                    "caregiver_name": caregiver.full_name if caregiver else None,
+                })
+
+            
+            return Response(data, status=status.HTTP_200_OK)
+        except Department.DoesNotExist:
+            return Response(
+                {"error": "Care-Giver department not found."},
+                status=status.HTTP_404_NOT_FOUND
+            )

@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+{% load static %}
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Doctor Availability</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 min-h-screen flex items-center justify-center">
+  <div class="w-full max-w-4xl p-6 bg-white shadow-md rounded">
+    <h1 class="text-2xl font-bold mb-4">Manage Availability</h1>
+
+    <!-- Availability List -->
+    <div id="availability-list" class="mb-6">
+      <h2 class="text-lg font-semibold mb-2">Current Slots</h2>
+      <ul class="list-disc pl-6 space-y-2" id="availability-slots">
+        <!-- Slots will be populated dynamically -->
+      </ul>
+    </div>
+
+    <!-- Add/Update Form -->
+    <form id="availability-form" class="space-y-4">
+      <input type="hidden" id="availability-id" />
+      <div>
+        <label for="date" class="block text-sm font-medium">Date</label>
+        <input type="date" id="date" class="w-full border rounded px-3 py-2" required />
+      </div>
+      <div>
+        <label for="start-time" class="block text-sm font-medium">Start Time</label>
+        <input type="time" id="start-time" class="w-full border rounded px-3 py-2" required />
+      </div>
+      <div>
+        <label for="session-duration" class="block text-sm font-medium">Session Duration (minutes)</label>
+        <input type="number" id="session-duration" class="w-full border rounded px-3 py-2" required />
+      </div>
+      <div>
+        <label for="max-patients" class="block text-sm font-medium">Max Patients</label>
+        <input type="number" id="max-patients" class="w-full border rounded px-3 py-2" required />
+      </div>
+      <button type="submit" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">Save</button>
+    </form>
+  </div>
+
+  <script src={% static "/js/doctor/doctor_availability.js" %}></script>
+</body>
+</html>

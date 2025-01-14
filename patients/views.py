@@ -8,18 +8,37 @@ from hospital.serializers import AppointmentSerializer
 from .models import Patient
 from .serializers import PatientSerializer
 from rest_framework.permissions import IsAuthenticated
+from rest_framework_simplejwt.authentication import JWTAuthentication
 
-class PatientDashboardAPIView(APIView):
+
+class PatientDetailAPIView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request, *args, **kwargs):
+        
+        try:
+            # Get the patient object linked to the logged-in user
+            patient = Patient.objects.get(user=request.user)
+        except Patient.DoesNotExist:
+            raise NotFound("Patient profile not found for the current user.")
+
+        serializer = PatientSerializer(patient)
+        return Response(serializer.data)
+
+class PatientDashboardAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+    authentication_classes = [JWTAuthentication]
+    def get(self, request, *args, **kwargs):
+       
         try:
             # Get the patient object associated with the authenticated user
+            # print(request.user)
             patient = Patient.objects.prefetch_related(
                 'bp_levels', 'sugar_levels', 'heart_rates', 'cholesterol_levels'
             ).get(user=request.user)
-
+            
             serializer = PatientSerializer(patient)
+            
             return Response(serializer.data, status=status.HTTP_200_OK)
         except Patient.DoesNotExist:
             return Response({'error': 'User is not a patient'}, status=status.HTTP_403_FORBIDDEN)

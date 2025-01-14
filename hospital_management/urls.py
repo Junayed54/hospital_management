@@ -15,8 +15,13 @@ urlpatterns = [
     path('', include('hospital.urls')),
     path('', include('patients.urls')),
     path('', include('payment.urls')),
+    path('', include('tests.urls')),
+    path('', include('caregivers.urls')),
     path('', index, name = 'home'),
     path('favicon.ico', RedirectView.as_view(url=staticfiles_storage.url('favicon/favicon.ico')))
 ]
 
 urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
+
+if settings.DEBUG:
+    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

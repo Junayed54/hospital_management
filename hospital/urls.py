@@ -1,20 +1,7 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from django.views.generic import TemplateView
-from .views import (
-    DoctorListCreateView, DoctorDetailView, DoctorUpdateView,
-    PatientListCreateView, PatientDetailView,
-    AppointmentListCreateView, AppointmentDetailView,
-    TreatmentListCreateView, TreatmentDetailView,
-    AppointmentCreateView, AppointmentListView, PatientAppointmentDetailView, CancelAppointmentView,
-    DoctorAppointmentListView,
-    PrescriptionListCreateView, PrescriptionRetrieveUpdateDestroyView, PatientPrescriptionView,
-    PatientAppointmentsListView,
-    DoctorDashboardView,
-    PendingAppointmentsViewSet,
-    
-)
-
+from .views import *
 
 router = DefaultRouter()
 router.register(r'pending-appointments', PendingAppointmentsViewSet, basename='pending-appointments')
@@ -56,12 +43,23 @@ urlpatterns = [
     # path('api/get-agora-token/', get_agora_token, name='get_agora_token'),
 
     path('api/doctor/dashboard/', DoctorDashboardView.as_view(), name='doctor_dashboard'),
+    
+    
+    #Availabilit
+    path('doctor/availability/', DoctorAvailabilityView.as_view(), name='create_availability'),  # For creating availability
+    path('doctor/availability/<int:availability_id>/', DoctorAvailabilityView.as_view(), name='update_availability'),  # For updating availability
+    
+    
+    
+    
+    
+    path('api/create-doctor/', CreateDoctorView.as_view(), name='doctor_create'),
 ]
 
 
 templates = [
     path('doctors_list/', TemplateView.as_view(template_name='doctors.html'), name='doctors_list'),
-    path('appointment/<int:pk>/', TemplateView.as_view(template_name='book_appoinment.html'), name='book_appoinment'),
+    path('appointment/<int:pk>/<int:id>/', TemplateView.as_view(template_name='book_appoinment.html'), name='book_appoinment'),
     path('doctor_appointments/<int:pk>/', TemplateView.as_view(template_name='doctor_appointments.html'), name='doctor_appointments'),
     path('prescribe/', TemplateView.as_view(template_name='prescription.html'), name='prescription'),
     path('call/<str:pk>', TemplateView.as_view(template_name= 'appoinment_call.html'), name='call'),
@@ -72,6 +70,14 @@ templates = [
     path('doctor/dashboard/', TemplateView.as_view(template_name='doctor_dashboard.html'), name='doctor_dashboard'),
     path('update_doctor/', TemplateView.as_view(template_name='update_doctor.html'), name='update_doctor'),
 
+    
+    
+    path('doctor-availability/update/', TemplateView.as_view(template_name='doctor_availability.html'), name='doctor_availability'),
+    
+    
+    path('admin-dashboard/', TemplateView.as_view(template_name='admin_dashboard.html'), name='admin_dashboard'),
+    path('create-doctor/', TemplateView.as_view(template_name='doctor_create.html'), name='create_doctor'),
+    
 ]
 
 urlpatterns = urlpatterns + templates

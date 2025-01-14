@@ -3,7 +3,7 @@ from .models import Patient, BPLevel, SugarLevel, HeartRate, CholesterolLevel
 
 # Register your models here.
 class PatientAdmin(admin.ModelAdmin):
-    list_display = ('user', 'name', 'date_of_birth', 'gender', 'blood_type', 'insurance_provider')
+    list_display = ('id', 'user', 'name', 'date_of_birth', 'gender', 'blood_type', 'insurance_provider')
     search_fields = ('name', 'blood_type', 'insurance_provider')
     list_filter = ('gender', 'blood_type')
     fieldsets = (
