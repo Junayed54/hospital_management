@@ -49,11 +49,11 @@ document.getElementById('appointmentForm').addEventListener('submit', async func
     // Extract doctor ID and availability ID from the URL
     const pathParts = window.location.pathname.split('/').filter(Boolean); // Split URL path and remove empty parts
     const doctorId = pathParts[pathParts.length - 2]; // Second last part is the doctor ID
-    const availabilityId = pathParts[pathParts.length - 1]; // Last part is the availability ID
+    const availabilitySlotId = pathParts[pathParts.length - 1]; // Last part is the availability ID
 
-    // Add doctor and availability IDs to the form data
-    formData.append('doctor', doctorId);
-    formData.append('availability', availabilityId);
+    // Add doctor_id and availability_slot_id to the form data
+    formData.append('doctor_id', doctorId);
+    formData.append('availability_slot_id', availabilitySlotId);
 
     // Convert formData to JSON
     const data = Object.fromEntries(formData.entries());
@@ -91,3 +91,4 @@ function getCSRFToken() {
     }
     return '';
 }
+
