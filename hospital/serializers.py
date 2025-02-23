@@ -95,11 +95,15 @@ class DoctorSerializer(serializers.ModelSerializer):
 
 
 class AppointmentSerializer(serializers.ModelSerializer):
+    doctor_name = serializers.SerializerMethodField()
+    doctor_speciality = serializers.SerializerMethodField()
     class Meta:
         model = Appointment
         fields = [
             'id',
             'doctor',  # Derived from doctor_id
+            'doctor_name',
+            'doctor_speciality',
             'patient',  # Derived internally for authenticated users or anonymous creation
             'patient_name',
             'phone_number',
@@ -115,7 +119,14 @@ class AppointmentSerializer(serializers.ModelSerializer):
             'doctor': {'read_only': True},  # Derived from doctor_id
             'patient': {'read_only': True},  # Managed internally
         }
+        
+    def get_doctor_name(self, obj):
+        return obj.doctor.full_name if obj.doctor else None
 
+    def get_doctor_speciality(self, obj):
+        return obj.doctor.speciality if obj.doctor else None
+    
+    
     def create(self, validated_data):
         """
         Automatically assigns an appointment time based on slot availability.
