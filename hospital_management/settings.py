@@ -25,7 +25,7 @@ SECRET_KEY = 'django-insecure-p4h*rgxarcragli%lv#yrrboucs^0ism&)(sc**d-fk6a%sa+-
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['127.0.0.1','localhost', '217.76.63.211']
+ALLOWED_HOSTS = ['127.0.0.1','localhost', '217.76.63.211', '161.97.141.58']
 
 
 
@@ -95,24 +95,24 @@ WSGI_APPLICATION = 'hospital_management.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/5.1/ref/settings/#databases
 
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
-    }
-}
-
-
 # DATABASES = {
 #     'default': {
-#         'ENGINE': 'django.db.backends.mysql',
-#         'NAME': 'hospital_management',
-#         'USER': 'root',
-#         'PASSWORD': 'Bridgers@123',
-#         'HOST': 'localhost',
-#         'PORT': '3306',
+#         'ENGINE': 'django.db.backends.sqlite3',
+#         'NAME': BASE_DIR / 'db.sqlite3',
 #     }
 # }
+
+
+DATABASES = {
+    'default': {
+        'ENGINE': 'django.db.backends.mysql',
+        'NAME': 'hospital_management',
+        'USER': 'root',
+        'PASSWORD': 'Bridgers@123',
+        'HOST': 'localhost',
+        'PORT': '3306',
+    }
+}
 
 
 
