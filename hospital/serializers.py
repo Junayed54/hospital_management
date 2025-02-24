@@ -124,7 +124,7 @@ class AppointmentSerializer(serializers.ModelSerializer):
         return obj.doctor.full_name if obj.doctor else None
 
     def get_doctor_speciality(self, obj):
-        return obj.doctor.speciality if obj.doctor else None
+        return obj.doctor.specialty if obj.doctor else None
     
     
     def create(self, validated_data):
