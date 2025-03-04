@@ -211,7 +211,7 @@ class UploadTestResultView(APIView):
         
         
 class TestResultDeleteView(APIView):
-    permission_classes = [permissions.IsAuthenticated]  # Ensure only authenticated users can delete test results
+    permission_classes = [IsAuthenticated]  # Ensure only authenticated users can delete test results
 
     def delete(self, request, *args, **kwargs):
         """
