@@ -33,13 +33,13 @@ urlpatterns = [
     path('api/appointment/<int:pk>/', PatientAppointmentDetailView.as_view(), name='patient_appointment_detail'),
     path('patient-appointment/', PatientAppointmentsListView.as_view(), name='patient-appointments'),
     path('api/doctor/<int:doctor_id>/appointments/', DoctorAppointmentListView.as_view(), name='doctor_appointments'),
-    path('appointments/<int:pk>/cancel/', CancelAppointmentView.as_view(), name='cancel_appointment'),
+    path('api/appointments/cancel/', CancelAppointmentView.as_view(), name='cancel_appointment'),
     #prescription urls
     path('prescriptions/', PrescriptionListCreateView.as_view(), name='prescription-list-create'),
     path('prescriptions/<int:pk>/', PrescriptionRetrieveUpdateDestroyView.as_view(), name='prescription-detail'),
     
     path('patient-prescription/<int:id>/', PatientPrescriptionView.as_view(), name='patient-prescription'),
-    
+    path('prescription/delete/', PrescriptionDeleteAPIView.as_view(), name='prescription-delete'),
     # path('api/get-agora-token/', get_agora_token, name='get_agora_token'),
 
     path('api/doctor/dashboard/', DoctorDashboardView.as_view(), name='doctor_dashboard'),

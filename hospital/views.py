@@ -10,7 +10,7 @@ from rest_framework.exceptions import ValidationError
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from rest_framework import status
+from rest_framework import status, viewsets
 from rest_framework.viewsets import ModelViewSet
 from django.utils.crypto import get_random_string
 from django.contrib.auth.hashers import make_password
@@ -365,14 +365,18 @@ class PrescriptionRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIVie
     permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
-        appointment_id = self.kwargs.get('pk')  # Capture appointment ID from the URL
-        appointment = Appointment.objects.get(id=appointment_id)
-        
+        appointment_id = self.kwargs.get('pk')
+    
         if not appointment_id:
-            return Prescription.objects.none()  
-        obj = Prescription.objects.filter(appointment=appointment)
-        print(obj.first())
-        return obj
+            return Prescription.objects.none()
+
+        try:
+            appointment = Appointment.objects.get(id=appointment_id)
+        except Appointment.DoesNotExist:
+            raise Http404("Appointment not found")
+
+        return Prescription.objects.filter(appointment=appointment)
+
 
     def perform_update(self, serializer):
         # Ensure only the doctor can update and publish prescriptions
@@ -400,6 +404,37 @@ class PatientPrescriptionView(RetrieveAPIView):
         appointment = Appointment.objects.get(id=appointment_id)
         return get_object_or_404(Prescription, appointment=appointment)
     
+
+class PrescriptionDeleteAPIView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def delete(self, request):
+        prescription_id = request.data.get("prescription_id")  # Get ID from request body
+
+        if not prescription_id:
+            return Response({"error": "Prescription ID is required."}, 
+                            status=status.HTTP_400_BAD_REQUEST)
+
+        # Get the doctor's profile linked to the user
+        doctor = getattr(request.user, 'doctor_profile', None)
+
+        if not doctor:
+            return Response({"error": "You are not authorized to delete prescriptions."}, 
+                            status=status.HTTP_403_FORBIDDEN)
+
+        # Get the prescription
+        prescription = get_object_or_404(Prescription, pk=prescription_id)
+
+        # Ensure the logged-in doctor created this prescription
+        if prescription.doctor != doctor:
+            return Response({"error": "You can only delete your own prescriptions."}, 
+                            status=status.HTTP_403_FORBIDDEN)
+
+        prescription.delete()
+        return Response({"message": "Prescription deleted successfully."}, 
+                        status=status.HTTP_204_NO_CONTENT)
+
+
 
 class AppointmentPagination(PageNumberPagination):
     page_size = 10  # Set the number of appointments per page
@@ -470,7 +505,7 @@ class DoctorDashboardView(APIView):
 
 
 
-class PendingAppointmentsViewSet(ModelViewSet):
+class PendingAppointmentsViewSet(viewsets.ModelViewSet):
     """
     A viewset for managing pending appointments.
     """
@@ -482,64 +517,70 @@ class PendingAppointmentsViewSet(ModelViewSet):
         Filter the appointments to show only pending ones for the logged-in doctor.
         """
         user = self.request.user
-        
-        
+
         if not user.is_authenticated:
             return Appointment.objects.none()
         return Appointment.objects.filter(doctor__user__phone_number=f"{user}", status="pending")
 
-    @action(detail=True, methods=["post"])
-    def accept(self, request, pk=None):
+    @action(detail=False, methods=["post"])
+    def accept(self, request):
         """
-        Accept an appointment.
+        Accept an appointment using the ID from request body.
         """
-        print(pk)
-        try:
-            appointment = self.get_object()
-            print(appointment)
-            if appointment.status != "pending":
-                return Response(
-                    {"error": "Appointment is already processed."},
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
-            appointment.status = "accepted"
-            
-            appointment.save()
-            print(appointment.status)
-            return Response({"message": "Appointment accepted successfully."}, status=status.HTTP_200_OK)
-        except Appointment.DoesNotExist:
-            return Response({"error": "Appointment not found."}, status=status.HTTP_404_NOT_FOUND)
+        appointment_id = request.data.get("appointment_id")
+        if not appointment_id:
+            return Response({"error": "Appointment ID is required."}, status=status.HTTP_400_BAD_REQUEST)
 
-    @action(detail=True, methods=["post"])
-    def reject(self, request, pk=None):
+        appointment = get_object_or_404(Appointment, id=appointment_id)
+
+        if appointment.status != "pending":
+            return Response({"error": "Appointment is already processed."}, status=status.HTTP_400_BAD_REQUEST)
+
+        appointment.status = "accepted"
+        appointment.save()
+
+        return Response({"message": "Appointment accepted successfully."}, status=status.HTTP_200_OK)
+
+    @action(detail=False, methods=["post"])
+    def reject(self, request):
         """
-        Reject an appointment.
+        Reject an appointment using the ID from request body.
         """
-        try:
-            appointment = self.get_object()
-            if appointment.status != "pending":
-                return Response(
-                    {"error": "Appointment is already processed."},
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
-            appointment.status = "rejected"
-            appointment.save()
-            return Response({"message": "Appointment rejected successfully."}, status=status.HTTP_200_OK)
-        except Appointment.DoesNotExist:
-            return Response({"error": "Appointment not found."}, status=status.HTTP_404_NOT_FOUND)
+        appointment_id = request.data.get("appointment_id")
+        if not appointment_id:
+            return Response({"error": "Appointment ID is required."}, status=status.HTTP_400_BAD_REQUEST)
+
+        appointment = get_object_or_404(Appointment, id=appointment_id)
+
+        if appointment.status != "pending":
+            return Response({"error": "Appointment is already processed."}, status=status.HTTP_400_BAD_REQUEST)
+
+        appointment.status = "rejected"
+        appointment.save()
+
+        return Response({"message": "Appointment rejected successfully."}, status=status.HTTP_200_OK)
+
         
 class CancelAppointmentView(APIView):
-    def post(self, request, pk):
+    def post(self, request):
+        appointment_id = request.data.get('appointment_id')  # Fetch id from the body of the request
+        
+        if not appointment_id:
+            return Response({'error': 'Appointment ID is required.'}, status=status.HTTP_400_BAD_REQUEST)
+
         try:
-            appointment = Appointment.objects.get(id=pk, phone_number=f"{request.user}")
-            if appointment.status in ['pending']:
-                appointment.cancel()
+            # Get the appointment by id and the phone_number linked to the user
+            appointment = Appointment.objects.get(id=appointment_id, phone_number=str(request.user))
+
+            # Check if the appointment is in 'pending' status
+            if appointment.status == 'pending':
+                appointment.cancel()  # Assuming `cancel()` is a method on the Appointment model
                 return Response({'message': 'Appointment cancelled successfully.'}, status=status.HTTP_200_OK)
             else:
                 return Response({'error': 'Appointment cannot be cancelled.'}, status=status.HTTP_400_BAD_REQUEST)
+        
         except Appointment.DoesNotExist:
             return Response({'error': 'Appointment not found.'}, status=status.HTTP_404_NOT_FOUND)
-        
         
         
         
@@ -621,28 +662,38 @@ class DoctorAvailabilityView(APIView):
 
     
     
-    def delete(self, request, availability_id, *args, **kwargs):
+    def delete(self, request, *args, **kwargs):
         """
-        Delete an existing availability slot for the authenticated doctor.
+        Delete an availability slot for the authenticated doctor.
+        The availability ID is taken from the request body.
         """
-        if request.user.role != 'doctor':
+        # Ensure only doctors can delete availability slots
+        if not hasattr(request.user, 'doctor_profile'):
             return Response(
                 {"error": "Permission denied. Only doctors can access this resource."},
                 status=status.HTTP_403_FORBIDDEN
             )
 
-        try:
-            doctor = Doctor.objects.get(user=request.user)
-        except Doctor.DoesNotExist:
+        doctor = request.user.doctor_profile  # Get the doctor profile linked to the user
+
+        # Get availability ID from request body
+        availability_id = request.data.get("availability_id")
+
+        if not availability_id:
             return Response(
-                {"error": "You do not have a doctor profile."},
-                status=status.HTTP_403_FORBIDDEN
+                {"error": "Availability ID is required in the request body."},
+                status=status.HTTP_400_BAD_REQUEST
             )
 
+        # Get the availability instance and ensure the doctor owns it
         availability = get_object_or_404(DoctorAvailability, id=availability_id, doctor=doctor)
 
+        # Delete the availability slot
         availability.delete()
-        return Response({"message": "Availability slot deleted successfully."}, status=status.HTTP_204_NO_CONTENT)
+        return Response(
+            {"message": "Availability slot deleted successfully."},
+            status=status.HTTP_204_NO_CONTENT
+        )
 
 # Staff Dashboard View
 

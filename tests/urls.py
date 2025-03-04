@@ -12,13 +12,13 @@ router.register(r'test-results', TestResultViewSet)
 
 urlpatterns = [
     path('api/', include(router.urls)),  # Include all the router-generated URLs
-    
+    path('api/test-type/create/', TestTypeCreateView.as_view(), name='test-type-create'),
     
     path('api/update-assignment-status/<int:pk>/', UpdateAssignmentStatusAPIView.as_view(), name='update_assignment_status_api'),
     path('api/update-assignment-collector/<int:id>/', UpdateAssignmentCollectorAPIView.as_view(), name='update_assignment_collector'),
     path('api/upload-result/<int:id>/', UploadTestResultView.as_view(), name='upload_test_result'),
     path('api/test-assignments/', TestAssignments.as_view(), name='staff_dashboard_api'),
-    
+    path('api/test-result/delete/', TestResultDeleteView.as_view(), name='test-result-delete'),
 ]
 
 

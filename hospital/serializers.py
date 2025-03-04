@@ -273,15 +273,26 @@ class PrescriptionSerializer(serializers.ModelSerializer):
     medications = MedicationSerializer(many=True, required=False)
     tests = TestSerializer(many=True, required=False)
     patient = PatientSerializer(read_only=True)
-
+    doctor_name = serializers.SerializerMethodField()
+    doctor_speciality = serializers.SerializerMethodField()
+    doctor = serializers.PrimaryKeyRelatedField(read_only=True)
     class Meta:
         model = Prescription
         fields = [
-            'id', 'doctor', 'patient', 'appointment', 'diagnosis',
+            'id', 'doctor', 'doctor_name', 'doctor_speciality', 'patient', 'appointment', 'diagnosis',
             'prescription', 'treatment_date', 'follow_up_date',
             'treatment_notes', 'cost', 'published', 'next_appointment_date',
             'treatment_result', 'medications', 'tests'
         ]
+        
+        
+    def get_doctor_name(self, obj):
+        """Fetches the full name of the doctor"""
+        return obj.doctor.full_name if obj.doctor else None
+
+    def get_doctor_speciality(self, obj):
+        """Fetches the specialty of the doctor"""
+        return obj.doctor.specialty if obj.doctor and hasattr(obj.doctor, 'speciality') else None
 
     def create(self, validated_data):
         medications_data = validated_data.pop('medications', [])

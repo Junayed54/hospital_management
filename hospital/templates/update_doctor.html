@@ -108,7 +108,6 @@
                 current_password: formData.get('current_password'),
                 new_password: formData.get('new_password'),
             };
-
             try {
                 const response = await fetch('/password-update/', {
                     method: 'POST',

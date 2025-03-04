@@ -15,7 +15,10 @@ class TestTypeViewSet(viewsets.ModelViewSet):
     serializer_class = TestTypeSerializer
     # You can add additional filtering, permissions, etc. here if needed
 
-
+class TestTypeCreateView(generics.CreateAPIView):
+    queryset = TestType.objects.all()
+    serializer_class = TestTypeSerializer
+    permission_classes = [permissions.IsAuthenticated]
 # View for TestOrder model
 class TestOrderViewSet(viewsets.ModelViewSet):
     
@@ -165,42 +168,72 @@ class UpdateAssignmentStatusAPIView(APIView):
 
 class UploadTestResultView(APIView):
     permission_classes = [IsAuthenticated]
+
     def post(self, request, id):
-        test_order = TestOrder.objects.get(id=id)
-        
         try:
             # Fetch the TestOrder instance
             test_order = TestOrder.objects.get(id=id)
-            assignment = TestCollectionAssignment.objects.get(test_order=test_order)
-            
-            if not assignment:
-                return Response({"error": "Assingnment not found"}, status=status.HTTP_404_NOT_FOUND) 
-            # Update the TestResult
-            result_serializer = TestResultSerializer(data=request.data)
-            if result_serializer.is_valid():
-                result_instance, created = TestResult.objects.update_or_create(
-                    test_order=test_order,
-                    defaults={
-                        "result": result_serializer.validated_data.get('result'),
-                        "result_file": result_serializer.validated_data.get('result_file'),
-                        "result_sent": result_serializer.validated_data.get('result_sent'),
-                    },
-                )
-
-                # Update the TestOrder status
-                test_order.status = 'result_delivered'
-                assignment.status = "Completed"
-                test_order.result_sent = result_serializer.validated_data.get('result_sent', False)
-                test_order.save()
-                assignment.save()
-
-                return Response(
-                    {"message": "Test result updated successfully", "id": result_instance.id},
-                    status=status.HTTP_200_OK,
-                )
-            else:
-                print(result_serializer.errors)
-                return Response(result_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
         except TestOrder.DoesNotExist:
-            return Response({"error": "Test order not found"}, status=status.HTTP_404_NOT_FOUND)
+            return Response({"type": "error", "error": "Test order not found"}, status=status.HTTP_404_NOT_FOUND)
+
+        try:
+            assignment = TestCollectionAssignment.objects.get(test_order=test_order)
+        except TestCollectionAssignment.DoesNotExist:
+            return Response({"type": "error", "error": "Assignment not found"}, status=status.HTTP_404_NOT_FOUND)
+
+        # Check if a TestResult already exists
+        test_result, created = TestResult.objects.get_or_create(test_order=test_order)
+
+        # Validate new result data
+        result_serializer = TestResultSerializer(test_result, data=request.data, partial=True)
+        if result_serializer.is_valid():
+            result_serializer.save()
+
+            # Update the statuses
+            test_order.status = 'result_delivered'
+            assignment.status = "Completed"
+            test_order.result_sent = result_serializer.validated_data.get('result_sent', test_order.result_sent)
+            test_order.save()
+            assignment.save()
+
+            return Response(
+                {
+                    "type": "success",
+                    "message": "Test result updated successfully" if not created else "Test result uploaded successfully",
+                    "id": test_result.id,
+                },
+                status=status.HTTP_200_OK,
+            )
+        else:
+            return Response({"type": "error", "errors": result_serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
+        
+        
+class TestResultDeleteView(APIView):
+    permission_classes = [permissions.IsAuthenticated]  # Ensure only authenticated users can delete test results
+
+    def delete(self, request, *args, **kwargs):
+        """
+        Delete a test result by ID (provided in request body).
+        """
+        test_result_id = request.data.get("test_result_id")  # Get the ID from the request body
+
+        if not test_result_id:
+            return Response(
+                {"error": "Test result ID is required in the request body."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        test_result = get_object_or_404(TestResult, id=test_result_id)
+
+        # Ensure only the doctor who created the test result or an admin can delete it
+        if not request.user.is_staff and request.user != test_result.test_order.doctor.user:
+            return Response(
+                {"error": "Permission denied. You can only delete your own test results."},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        test_result.delete()
+        return Response(
+            {"message": "Test result deleted successfully."},
+            status=status.HTTP_204_NO_CONTENT
+        )
