@@ -7,7 +7,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework import status
 from django.utils.timezone import now
 from rest_framework import generics
-from django.contrib.auth.models import Permission
+
 from django.contrib.auth import get_user_model
 User = get_user_model() 
 from accounts.permissions import *
@@ -20,7 +20,7 @@ class TestTypeViewSet(viewsets.ModelViewSet):
 class TestTypeCreateView(generics.CreateAPIView):
     queryset = TestType.objects.all()
     serializer_class = TestTypeSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [IsAuthenticated]
 # View for TestOrder model
 class TestOrderViewSet(viewsets.ModelViewSet):
     
