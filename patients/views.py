@@ -1,12 +1,12 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from rest_framework import status
+from rest_framework import status, viewsets
 from django.db.models import Q
 from django.utils.timezone import now
 from hospital.models import Appointment
 from hospital.serializers import AppointmentSerializer
-from .models import Patient
-from .serializers import PatientSerializer
+from .models import *
+from .serializers import *
 from rest_framework.permissions import IsAuthenticated
 from rest_framework_simplejwt.authentication import JWTAuthentication
 
@@ -109,3 +109,28 @@ class UpdatePatientView(APIView):
             return Response(serializer.data, status=status.HTTP_200_OK)
 
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+    
+    
+class PatientReportViewSet(viewsets.ModelViewSet):
+    queryset = PatientReport.objects.all().order_by('-uploaded_at')
+    serializer_class = PatientReportSerializer
+    permission_classes = [IsAuthenticated]
+
+    def perform_create(self, serializer):
+        serializer.save(patient=self.request.user)  # Automatically assign the logged-in user as the patient
+
+    def get_queryset(self):
+        return PatientReport.objects.filter(patient=self.request.user)  # Patients can only see their own reports
+
+
+class PatientPrescriptionViewSet(viewsets.ModelViewSet):
+    queryset = PatientPrescription.objects.all().order_by('-uploaded_at')
+    serializer_class = PatientPrescriptionSerializer
+    permission_classes = [IsAuthenticated]
+
+    def perform_create(self, serializer):
+        serializer.save(patient=self.request.user)  # Automatically assign the logged-in user as the patient
+
+    def get_queryset(self):
+        return PatientPrescription.objects.filter(patient=self.request.user)  

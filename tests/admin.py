@@ -11,7 +11,7 @@ class TestTypeAdmin(admin.ModelAdmin):
 
 @admin.register(TestOrder)
 class TestOrderAdmin(admin.ModelAdmin):
-    list_display = ('id', 'user', 'test_type', 'order_date', 'status', 'collection_time', 'result_sent')  # Display ID
+    list_display = ('id', 'user', 'test_type', 'order_date', 'status', 'collection_time', 'result_sent', 'address')  # Display ID
     search_fields = ('user__username', 'test_type__name')
     list_filter = ('status', 'order_date', 'result_sent')
     ordering = ('-id',)  # Order by ID in descending order

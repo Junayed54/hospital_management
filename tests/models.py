@@ -27,6 +27,7 @@ class TestOrder(models.Model):
         ('completed', 'Completed'),
         ('result_delivered', 'Result Delivered'),
     ]
+
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     test_type = models.ForeignKey(TestType, on_delete=models.CASCADE)
     order_date = models.DateTimeField(auto_now_add=True)
@@ -37,10 +38,17 @@ class TestOrder(models.Model):
     latitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
     longitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
     address = models.TextField(blank=True, null=True)
+    total_pay = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+
+    def save(self, *args, **kwargs):
+        """Set total_pay based on test_type price if not already set."""
+        if not self.total_pay:
+            self.total_pay = self.test_type.price  # Static pricing
+        super().save(*args, **kwargs)
 
     def __str__(self):
-        return f"Test Order for {self.user} - {self.test_type}"  # Use patient name from Patient model
-    
+        return f"Test Order for {self.user} - {self.test_type}"
+
     def get_patient_contact_details(self):
         """Fetch contact details from the associated User model via Patient."""
         if self.patient and self.patient.user:

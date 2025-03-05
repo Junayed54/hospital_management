@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import TestType, TestOrder, TestCollectionAssignment, TestResult
+from .models import *
 from patients.models import Patient  # Import the Patient model
 from django.conf import settings
 
@@ -45,7 +45,7 @@ class TestOrderSerializer(serializers.ModelSerializer):
         model = TestOrder
         fields = [
             'patient_name', 'patient_email', 'patient_phone', 'test_type',
-            'order_date', 'status', 'collection_time', 'result', 'result_sent', 'latitude', 'longitude', 'test_name', 'test_result', 'address'
+            'order_date', 'status', 'collection_time', 'result', 'result_sent', 'latitude', 'longitude', 'test_name', 'test_result', 'address', 'total_pay'
         ]
         read_only_fields = ['order_date']  # `order_date` is auto-generated
 

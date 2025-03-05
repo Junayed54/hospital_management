@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Patient, BPLevel, SugarLevel, HeartRate, CholesterolLevel
+from .models import *
 
 class BPLevelSerializer(serializers.ModelSerializer):
     class Meta:
@@ -40,3 +40,19 @@ class PatientSerializer(serializers.ModelSerializer):
             'gender': {'required': False},
             'blood_type': {'required': False},
         }
+        
+class PatientReportSerializer(serializers.ModelSerializer):
+    patient_username = serializers.CharField(source='patient.username', read_only=True)
+
+    class Meta:
+        model = PatientReport
+        fields = ['id', 'patient', 'patient_username', 'title', 'category', 'description', 'report_file', 'uploaded_at']
+        read_only_fields = ['uploaded_at']
+
+class PatientPrescriptionSerializer(serializers.ModelSerializer):
+    patient_username = serializers.CharField(source='patient.username', read_only=True)
+
+    class Meta:
+        model = PatientPrescription
+        fields = ['id', 'patient', 'patient_username', 'title', 'doctor_name', 'prescription_date', 'description', 'prescription_file', 'uploaded_at']
+        read_only_fields = ['uploaded_at']

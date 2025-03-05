@@ -1,7 +1,14 @@
-from django.urls import path
-from .views import PatientDetailAPIView, PatientDashboardAPIView, PatientAppointmentsView, UpdatePatientView
+from django.urls import path, include
+from .views import *
 from django.views.generic import TemplateView
+from rest_framework.routers import DefaultRouter
+
+router = DefaultRouter()
+router.register(r'patient-reports', PatientReportViewSet, basename='patient-report')
+router.register(r'patient-prescriptions', PatientPrescriptionViewSet, basename='patient-prescription')
+
 urlpatterns = [
+    path('api/', include(router.urls)),
     path('api/dashboard/', PatientDashboardAPIView.as_view(), name='patient_dashboard_api'),
     path('api/patient-appointments/', PatientAppointmentsView.as_view(), name='patient-appointments'),
     path('patient/update/', UpdatePatientView.as_view(), name='update_patient'),

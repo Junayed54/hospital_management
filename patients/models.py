@@ -96,3 +96,39 @@ class CholesterolLevel(models.Model):
 
     def __str__(self):
         return f"Cholesterol {self.level} for {self.patient.name} on {self.date}"
+    
+    
+    
+class PatientReport(models.Model):
+    REPORT_CATEGORIES = [
+        ('Blood Test', 'Blood Test'),
+        ('X-Ray', 'X-Ray'),
+        ('MRI', 'MRI'),
+        ('CT Scan', 'CT Scan'),
+        ('Ultrasound', 'Ultrasound'),
+        ('ECG', 'ECG'),
+        ('Other', 'Other'),
+    ]
+
+    patient = models.ForeignKey(User, on_delete=models.CASCADE, related_name='reports')  # Link to User model
+    title = models.CharField(max_length=255)  # Report title
+    category = models.CharField(max_length=50, choices=REPORT_CATEGORIES, default='Other')  # Report type
+    description = models.TextField(blank=True, null=True)  # Optional details
+    report_file = models.FileField(upload_to='patient_reports/')  # File upload location
+    uploaded_at = models.DateTimeField(auto_now_add=True)  # Timestamp
+
+    def __str__(self):
+        return f"{self.patient.username} - {self.category} ({self.title})"
+
+
+class PatientPrescription(models.Model):
+    patient = models.ForeignKey(User, on_delete=models.CASCADE, related_name='prescriptions')  # Link to User model
+    title = models.CharField(max_length=255)  # Prescription title
+    doctor_name = models.CharField(max_length=255, blank=True, null=True)  # Name of the doctor
+    prescription_date = models.DateField(null=True, blank=True)  # Date of prescription
+    description = models.TextField(blank=True, null=True)  # Additional details
+    prescription_file = models.FileField(upload_to='patient_prescriptions/')  # File upload location
+    uploaded_at = models.DateTimeField(auto_now_add=True)  # Timestamp
+
+    def __str__(self):
+        return f"{self.patient.username} - {self.title} ({self.prescription_date})"
