@@ -45,7 +45,7 @@ class TestOrderSerializer(serializers.ModelSerializer):
         model = TestOrder
         fields = [
             'patient_name', 'patient_email', 'patient_phone', 'test_type',
-            'order_date', 'status', 'collection_time', 'result', 'result_sent', 'latitude', 'longitude', 'test_name', 'test_result'
+            'order_date', 'status', 'collection_time', 'result', 'result_sent', 'latitude', 'longitude', 'test_name', 'test_result', 'address'
         ]
         read_only_fields = ['order_date']  # `order_date` is auto-generated
 
