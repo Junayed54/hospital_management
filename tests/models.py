@@ -36,7 +36,7 @@ class TestOrder(models.Model):
     result_sent = models.BooleanField(default=False)
     latitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
     longitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
-    
+    address = models.TextField(blank=True, null=True)
 
     def __str__(self):
         return f"Test Order for {self.user} - {self.test_type}"  # Use patient name from Patient model
