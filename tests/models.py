@@ -11,13 +11,12 @@ User = get_user_model()
     
 class TestType(models.Model):
     name = models.CharField(max_length=255)  # Name of the test (e.g., Blood Test, Urine Test)
-    description = models.TextField(blank=True, null=True)  # Optional description of the test
     estimate_time = models.PositiveIntegerField(default=1)  # Estimated time in hours
     home_collection_available = models.BooleanField(default=False)  # Whether home collection is available
     pre_test_instruction = models.TextField(blank=True, null=True)  # Pre-test instructions
     fee = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)  # Base fee for the test
     vat = models.DecimalField(max_digits=5, decimal_places=2, default=0.00)  # VAT percentage
-
+    details = models.TextField(null=True, blank=True)
     def __str__(self):
         return self.name
 
