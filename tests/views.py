@@ -21,6 +21,7 @@ class TestTypeCreateView(generics.CreateAPIView):
     queryset = TestType.objects.all()
     serializer_class = TestTypeSerializer
     permission_classes = [IsAuthenticated]
+    
 # View for TestOrder model
 class TestOrderViewSet(viewsets.ModelViewSet):
     

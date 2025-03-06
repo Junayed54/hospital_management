@@ -12,8 +12,12 @@ User = get_user_model()
 class TestType(models.Model):
     name = models.CharField(max_length=255)  # Name of the test (e.g., Blood Test, Urine Test)
     description = models.TextField(blank=True, null=True)  # Optional description of the test
-    price = models.DecimalField(max_digits=10, decimal_places=2)  # Price for the test
-    
+    estimate_time = models.PositiveIntegerField(default=1)  # Estimated time in hours
+    home_collection_available = models.BooleanField(default=False)  # Whether home collection is available
+    pre_test_instruction = models.TextField(blank=True, null=True)  # Pre-test instructions
+    fee = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)  # Base fee for the test
+    vat = models.DecimalField(max_digits=5, decimal_places=2, default=0.00)  # VAT percentage
+
     def __str__(self):
         return self.name
 
@@ -27,7 +31,6 @@ class TestOrder(models.Model):
         ('completed', 'Completed'),
         ('result_delivered', 'Result Delivered'),
     ]
-
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     test_type = models.ForeignKey(TestType, on_delete=models.CASCADE)
     order_date = models.DateTimeField(auto_now_add=True)
@@ -38,16 +41,17 @@ class TestOrder(models.Model):
     latitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
     longitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
     address = models.TextField(blank=True, null=True)
-    total_pay = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    total_pay = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)  # Total price
 
     def save(self, *args, **kwargs):
-        """Set total_pay based on test_type price if not already set."""
-        if not self.total_pay:
-            self.total_pay = self.test_type.price  # Static pricing
+        """Automatically calculate total pay based on fee and VAT."""
+        if self.test_type:
+            self.total_pay = self.test_type.fee + (self.test_type.fee * (self.test_type.vat / 100))
         super().save(*args, **kwargs)
 
     def __str__(self):
         return f"Test Order for {self.user} - {self.test_type}"
+
 
     def get_patient_contact_details(self):
         """Fetch contact details from the associated User model via Patient."""

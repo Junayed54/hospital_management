@@ -2,12 +2,13 @@ from django.contrib import admin
 
 from .models import TestType, TestOrder, TestCollectionAssignment, TestResult
 
+
 @admin.register(TestType)
 class TestTypeAdmin(admin.ModelAdmin):
-    list_display = ('id', 'name', 'price', 'description')  # Display the ID prominently
-    search_fields = ('name',)
-    list_filter = ('price',)
-    ordering = ('id',)  # Order by ID by default
+    list_display = ('name', 'estimate_time', 'home_collection_available', 'fee', 'vat')  # Fields to display in the admin list
+    list_filter = ('home_collection_available',)  # Filter options in the admin panel
+    search_fields = ('name',)  # Enable search by name
+    ordering = ('name',)  # Default ordering by name
 
 @admin.register(TestOrder)
 class TestOrderAdmin(admin.ModelAdmin):
