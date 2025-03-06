@@ -544,9 +544,11 @@ class PendingAppointmentsViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=["post"])
     def reject(self, request):
         """
-        Reject an appointment using the ID from request body.
+        Reject an appointment using the ID from request body and set a rejection note.
         """
         appointment_id = request.data.get("appointment_id")
+        note = request.data.get("note", "")
+
         if not appointment_id:
             return Response({"error": "Appointment ID is required."}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -556,10 +558,10 @@ class PendingAppointmentsViewSet(viewsets.ModelViewSet):
             return Response({"error": "Appointment is already processed."}, status=status.HTTP_400_BAD_REQUEST)
 
         appointment.status = "rejected"
+        appointment.note = note  # Set the rejection note
         appointment.save()
 
-        return Response({"message": "Appointment rejected successfully."}, status=status.HTTP_200_OK)
-
+        return Response({"message": "Appointment rejected successfully.", "note": appointment.note}, status=status.HTTP_200_OK)
         
 class CancelAppointmentView(APIView):
     def post(self, request):

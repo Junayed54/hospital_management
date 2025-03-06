@@ -145,7 +145,7 @@ class Appointment(models.Model):
     video_link = models.CharField(max_length=500, null=True, blank=True)
     patient_problem = models.TextField(null=True, blank=True)
     status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='pending')
-
+    note = models.TextField(null=True, blank=True)
     class Meta:
         # constraints = [
         #     models.UniqueConstraint(fields=['doctor', 'appointment_date'], name='unique_doctor_date'),

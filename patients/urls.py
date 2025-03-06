@@ -5,7 +5,7 @@ from rest_framework.routers import DefaultRouter
 
 router = DefaultRouter()
 router.register(r'patient-reports', PatientReportViewSet, basename='patient-report')
-router.register(r'patient-prescriptions', PatientPrescriptionViewSet, basename='patient-prescription')
+router.register(r'user-prescriptions', PatientPrescriptionViewSet, basename='patient-prescription')
 
 urlpatterns = [
     path('api/', include(router.urls)),

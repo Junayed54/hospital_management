@@ -7,6 +7,7 @@ from datetime import datetime, timedelta
 
 
 class DoctorAvailabilitySerializer(serializers.ModelSerializer):
+    
     class Meta:
         model = DoctorAvailability
         fields = [
@@ -113,6 +114,7 @@ class AppointmentSerializer(serializers.ModelSerializer):
             'video_link',
             'patient_problem',
             'status',
+            'note'
         ]
         extra_kwargs = {
             'appointment_date': {'read_only': True},  # Derived dynamically

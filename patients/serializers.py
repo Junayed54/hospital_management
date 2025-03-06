@@ -43,16 +43,27 @@ class PatientSerializer(serializers.ModelSerializer):
         
 class PatientReportSerializer(serializers.ModelSerializer):
     patient_username = serializers.CharField(source='patient.username', read_only=True)
+    patient = serializers.HiddenField(default=serializers.CurrentUserDefault())  # Automatically assign patient
 
     class Meta:
         model = PatientReport
         fields = ['id', 'patient', 'patient_username', 'title', 'category', 'description', 'report_file', 'uploaded_at']
-        read_only_fields = ['uploaded_at']
+        read_only_fields = ['patient', 'uploaded_at']  # Patient is now read-only
+
+    def perform_create(self, serializer):
+        print(self.request.user)  # Debugging: Check if user is properly authenticated
+        serializer.save(patient=self.request.user)
 
 class PatientPrescriptionSerializer(serializers.ModelSerializer):
     patient_username = serializers.CharField(source='patient.username', read_only=True)
+    patient = serializers.HiddenField(default=serializers.CurrentUserDefault())  # Automatically assign patient
 
     class Meta:
         model = PatientPrescription
         fields = ['id', 'patient', 'patient_username', 'title', 'doctor_name', 'prescription_date', 'description', 'prescription_file', 'uploaded_at']
-        read_only_fields = ['uploaded_at']
+        read_only_fields = ['patient', 'uploaded_at']  # Patient is now read-only
+
+    
+    def perform_create(self, serializer):
+        print(self.request.user)  # Debugging: Check if user is properly authenticated
+        serializer.save(patient=self.request.user)

@@ -117,8 +117,8 @@ class PatientReportViewSet(viewsets.ModelViewSet):
     serializer_class = PatientReportSerializer
     permission_classes = [IsAuthenticated]
 
-    def perform_create(self, serializer):
-        serializer.save(patient=self.request.user)  # Automatically assign the logged-in user as the patient
+    # def perform_create(self, serializer):
+    #     serializer.save(patient=self.request.user)
 
     def get_queryset(self):
         return PatientReport.objects.filter(patient=self.request.user)  # Patients can only see their own reports
