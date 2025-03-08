@@ -512,15 +512,12 @@ class PendingAppointmentsViewSet(viewsets.ModelViewSet):
     queryset = Appointment.objects.all()
     serializer_class = AppointmentSerializer
 
-    def get_queryset(self):
+    def get_accepted_appointments(self, doctor):
         """
-        Filter the appointments to show only pending ones for the logged-in doctor.
+        Fetch all accepted appointments for the given doctor, ordered by date.
         """
-        user = self.request.user
-
-        if not user.is_authenticated:
-            return Appointment.objects.none()
-        return Appointment.objects.filter(doctor__user__phone_number=f"{user}", status="pending")
+        accepted_appointments = Appointment.objects.filter(doctor=doctor, status="accepted").order_by("date")
+        return AppointmentSerializer(accepted_appointments, many=True).data
 
     @action(detail=False, methods=["post"])
     def accept(self, request):
@@ -539,7 +536,16 @@ class PendingAppointmentsViewSet(viewsets.ModelViewSet):
         appointment.status = "accepted"
         appointment.save()
 
-        return Response({"message": "Appointment accepted successfully."}, status=status.HTTP_200_OK)
+        # Extract the doctor from the appointment
+        doctor = appointment.doctor
+
+        # Fetch accepted appointments for this doctor
+        accepted_appointments = self.get_accepted_appointments(doctor)
+
+        return Response({
+            "message": "Appointment accepted successfully.",
+            "accepted_appointments": accepted_appointments
+        }, status=status.HTTP_200_OK)
 
     @action(detail=False, methods=["post"])
     def reject(self, request):
@@ -558,10 +564,19 @@ class PendingAppointmentsViewSet(viewsets.ModelViewSet):
             return Response({"error": "Appointment is already processed."}, status=status.HTTP_400_BAD_REQUEST)
 
         appointment.status = "rejected"
-        appointment.note = note  # Set the rejection note
+        appointment.note = note
         appointment.save()
 
-        return Response({"message": "Appointment rejected successfully.", "note": appointment.note}, status=status.HTTP_200_OK)
+        # Extract the doctor from the appointment
+        doctor = appointment.doctor
+
+        # Fetch accepted appointments for this doctor
+        accepted_appointments = self.get_accepted_appointments(doctor)
+
+        return Response({
+            "message": "Appointment rejected successfully.",
+            "accepted_appointments": accepted_appointments
+        }, status=status.HTTP_200_OK)
         
 class CancelAppointmentView(APIView):
     def post(self, request):
