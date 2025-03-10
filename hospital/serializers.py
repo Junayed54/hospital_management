@@ -5,6 +5,11 @@ from accounts.serializers import CustomUserSerializer
 from patients.serializers import PatientSerializer
 from datetime import datetime, timedelta
 
+from django.contrib.auth import get_user_model
+User = get_user_model() 
+
+
+
 
 class DoctorAvailabilitySerializer(serializers.ModelSerializer):
     
@@ -162,10 +167,18 @@ class AppointmentSerializer(serializers.ModelSerializer):
             email = validated_data.get('email')
 
             # Check if the patient exists or create an anonymous patient
-            patient, created = Patient.objects.get_or_create(
-                name=patient_name,
-                # defaults={'phone_number': phone_number, 'email': email},
-            )
+            user = User.objects.filter(phone_number=phone_number).first()
+
+            if user:
+                patient, created = Patient.objects.get_or_create(
+                    user=user,
+                    # defaults={'name': patient_name}
+                )
+            else:
+                # Create a patient without a user (for unauthorized users)
+                patient, created = Patient.objects.create(
+                    name=patient_name
+                )
 
             # Add to the waiting list
             WaitingList.objects.create(

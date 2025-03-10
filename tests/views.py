@@ -35,31 +35,48 @@ class TestOrderViewSet(viewsets.ModelViewSet):
         """
         return TestOrder.objects.filter(user=self.request.user)
     def create(self, request, *args, **kwargs):
-        serializer = self.get_serializer(data=request.data)
-        if serializer.is_valid():
-            # Save the TestOrder instance
-            test_order = serializer.save()
+        # Get the list of test IDs from the request data
+        test_types = request.data.get('test_types', [])
+        
+        if not test_types:
+            return Response({"error": "At least one test type must be provided."}, status=status.HTTP_400_BAD_REQUEST)
 
-            # Automatically create TestCollectionAssignment when the test order is created
-            if test_order.status == 'requested':  # Only create when the status is 'requested'
-                # You can assign the staff manually or automatically based on some logic
-                # For example, let's assume you assign the first available staff member:
+        # The user sending the request (assuming user is authenticated)
+        user = request.user  # Assuming the user is authenticated and passed in the request
+
+        # Create a list to store created test orders
+        orders = []
+        for test_type_id in test_types:
+            try:
+                # Retrieve the TestType object by ID
+                test_type = TestType.objects.get(id=test_type_id)
+                
+                # Create the TestOrder instance
+                order = TestOrder(user=user, test_type=test_type, status='requested')
+                orders.append(order)
+                
+            except TestType.DoesNotExist:
+                # If TestType doesn't exist, return an error response
+                return Response({"error": f"Test type with ID {test_type_id} not found."}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Bulk create the orders
+        TestOrder.objects.bulk_create(orders)
+
+        # For each created test order, automatically create TestCollectionAssignment
+        for order in orders:
+            if order.status == 'requested':  # Only create when the status is 'requested'
+                # Assign the first available staff member to the assignment
                 staff_member = User.objects.filter(role='staff').first()  # Example of assigning the first staff
                 if staff_member:
                     TestCollectionAssignment.objects.create(
-                        
-                        test_order=test_order,
+                        test_order=order,
                         status='Assigned',
                         collection_date=now(),  # Set the collection date/time
-                        # Optionally, you can also assign the staff member here
-                        # collector=staff_member,  # Assuming you have a field for the collector
+                        collector=staff_member  # Assuming you have a field for the collector
                     )
 
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-        else:
-            print(serializer.errors)
-            return Response(serializer.errors, status=400)
-        
+        # Return a response with the created orders
+        return Response(TestOrderSerializer(orders, many=True).data, status=status.HTTP_201_CREATED)
     def update(self, request, *args, **kwargs):
         """
         Override the update method to handle nested TestType updates.

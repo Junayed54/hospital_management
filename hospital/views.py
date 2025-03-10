@@ -144,7 +144,7 @@ class AppointmentCreateView(generics.CreateAPIView):
     # def perform_create(self, serializer):
     #     user = self.request.user if self.request.user.is_authenticated else None
     #     doctor_id = self.request.data.get('doctor')  # Doctor ID from request
-    #     availability_id = self.request.data.get('availability')  # Availability ID from request
+    #     availability_id = self.request.data.get('slot_id')  # Availability ID from request
 
     #     if not doctor_id or not availability_id:
     #         raise serializers.ValidationError({"error": "Doctor ID and Availability ID are required."})
