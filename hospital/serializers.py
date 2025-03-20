@@ -100,9 +100,14 @@ class DoctorSerializer(serializers.ModelSerializer):
 #         fields = ['id', 'user', 'date_of_birth', 'gender', 'address', 'medical_history', 'emergency_contact', 'blood_type', 'insurance_provider', 'insurance_policy_number']
 
 
+from rest_framework import serializers
+from datetime import datetime, timedelta
+from .models import Appointment, Doctor, DoctorAvailability, Patient, WaitingList, User
+
 class AppointmentSerializer(serializers.ModelSerializer):
     doctor_name = serializers.SerializerMethodField()
     doctor_speciality = serializers.SerializerMethodField()
+
     class Meta:
         model = Appointment
         fields = [
@@ -126,23 +131,21 @@ class AppointmentSerializer(serializers.ModelSerializer):
             'doctor': {'read_only': True},  # Derived from doctor_id
             'patient': {'read_only': True},  # Managed internally
         }
-        
+
     def get_doctor_name(self, obj):
         return obj.doctor.full_name if obj.doctor else None
 
     def get_doctor_speciality(self, obj):
         return obj.doctor.specialty if obj.doctor else None
-    
-    
+
     def create(self, validated_data):
         """
         Automatically assigns an appointment time based on slot availability.
         """
-        # Get IDs from the request
         request = self.context['request']
         doctor_id = request.data.get('doctor_id')
         availability_id = request.data.get('slot_id')
-        # patient = validated_data.get('patient')
+
         if not doctor_id:
             raise serializers.ValidationError({"doctor_id": "This field is required."})
         if not availability_id:
@@ -166,24 +169,22 @@ class AppointmentSerializer(serializers.ModelSerializer):
             phone_number = validated_data.get('phone_number')
             email = validated_data.get('email')
 
-            # Check if the patient exists or create an anonymous patient
             user = User.objects.filter(phone_number=phone_number).first()
 
             if user:
-                patient, created = Patient.objects.get_or_create(
+                patient_obj, created = Patient.objects.get_or_create(
                     user=user,
                     defaults={'name': patient_name}
                 )
             else:
-                # Create a patient without a user (for unauthorized users)
-                patient, created = Patient.objects.create(
+                patient_obj, created = Patient.objects.get_or_create(
                     name=patient_name
                 )
 
-            # Add to the waiting list
+            # Add patient to the waiting list
             WaitingList.objects.create(
                 availability=availability,
-                patient=patient
+                patient=patient_obj
             )
             raise serializers.ValidationError({"slot_id": "No slots available. Added to the waiting list."})
 
@@ -210,10 +211,12 @@ class AppointmentSerializer(serializers.ModelSerializer):
         availability.booked_patients += 1
         availability.save()
 
-        # Populate the appointment instance
+        # Assign the calculated values
         validated_data['doctor'] = doctor
         validated_data['appointment_date'] = appointment_time
+
         return super().create(validated_data)
+
 
     def update(self, instance, validated_data):
         """
