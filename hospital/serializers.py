@@ -172,12 +172,12 @@ class AppointmentSerializer(serializers.ModelSerializer):
             user = User.objects.filter(phone_number=phone_number).first()
 
             if user:
-                patient_obj, created = Patient.objects.get_or_create(
-                    user=user,
-                    defaults={'name': patient_name}
-                )
+                # Get the patient by phone number (to avoid multiple objects issue)
+                patient = Patient.objects.filter(user=user).first()
+                if not patient:
+                    patient = Patient.objects.create(user=user, name=patient_name)  
             else:
-                patient_obj, created = Patient.objects.get_or_create(
+                patient_obj, created = Patient.objects.create(
                     name=patient_name
                 )
 
