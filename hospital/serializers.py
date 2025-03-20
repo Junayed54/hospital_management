@@ -172,7 +172,7 @@ class AppointmentSerializer(serializers.ModelSerializer):
             if user:
                 patient, created = Patient.objects.get_or_create(
                     user=user,
-                    # defaults={'name': patient_name}
+                    defaults={'name': patient_name}
                 )
             else:
                 # Create a patient without a user (for unauthorized users)
