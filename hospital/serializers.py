@@ -177,7 +177,7 @@ class AppointmentSerializer(serializers.ModelSerializer):
                 if not patient:
                     patient = Patient.objects.create(user=user, name=patient_name)  
             else:
-                patient_obj, created = Patient.objects.create(
+                patient_obj = Patient.objects.create(
                     name=patient_name
                 )
 
