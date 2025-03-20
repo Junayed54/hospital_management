@@ -52,16 +52,14 @@ class TestOrderViewSet(viewsets.ModelViewSet):
                 test_type = TestType.objects.get(id=test_type_id)
                 
                 # Create the TestOrder instance
-                order = TestOrder(user=user, test_type=test_type, status='requested')
+                order = TestOrder.objects.create(user=user, test_type=test_type, status='requested')
                 orders.append(order)
                 
             except TestType.DoesNotExist:
                 # If TestType doesn't exist, return an error response
                 return Response({"error": f"Test type with ID {test_type_id} not found."}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Bulk create the orders
-        TestOrder.objects.bulk_create(orders)
-
+        
         # For each created test order, automatically create TestCollectionAssignment
         for order in orders:
             if order.status == 'requested':  # Only create when the status is 'requested'

@@ -99,26 +99,33 @@ class CholesterolLevel(models.Model):
     
     
     
-class PatientReport(models.Model):
-    REPORT_CATEGORIES = [
-        ('Blood Test', 'Blood Test'),
-        ('X-Ray', 'X-Ray'),
-        ('MRI', 'MRI'),
-        ('CT Scan', 'CT Scan'),
-        ('Ultrasound', 'Ultrasound'),
-        ('ECG', 'ECG'),
-        ('Other', 'Other'),
-    ]
-
-    patient = models.ForeignKey(User, on_delete=models.CASCADE, related_name='reports')  # Link to User model
-    title = models.CharField(max_length=255)  # Report title
-    category = models.CharField(max_length=50, choices=REPORT_CATEGORIES, default='Other')  # Report type
-    description = models.TextField(blank=True, null=True)  # Optional details
-    report_file = models.FileField(upload_to='patient_reports/')  # File upload location
-    uploaded_at = models.DateTimeField(auto_now_add=True)  # Timestamp
+class ReportCategory(models.Model):
+    """Stores categories like 'Blood Test', 'X-Ray', etc."""
+    name = models.CharField(max_length=100, unique=True)
 
     def __str__(self):
-        return f"{self.patient.username} - {self.category} ({self.title})"
+        return self.name
+
+class TestType(models.Model):
+    """Stores specific tests under a category, e.g., 'CBC', 'Lipid Profile' under 'Blood Test'."""
+    category = models.ForeignKey(ReportCategory, on_delete=models.CASCADE, related_name="test_types")
+    name = models.CharField(max_length=100, unique=True)
+
+    def __str__(self):
+        return f"{self.name} ({self.category.name})"
+
+class PatientReport(models.Model):
+    """Links reports to a specific test type instead of a hardcoded category."""
+    patient = models.ForeignKey(User, on_delete=models.CASCADE, related_name='reports')  
+    title = models.CharField(max_length=255)  
+    test_type = models.ForeignKey(TestType, on_delete=models.CASCADE, null=True, blank=True, related_name="patient_reports")  # Dynamic linking
+    description = models.TextField(blank=True, null=True)  
+    report_file = models.FileField(upload_to='patient_reports/')  
+    uploaded_at = models.DateTimeField(auto_now_add=True)  
+
+    def __str__(self):
+        return f"{self.patient.username} - {self.test_type.name} ({self.title})"
+
 
 
 class PatientPrescription(models.Model):

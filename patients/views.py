@@ -109,8 +109,19 @@ class UpdatePatientView(APIView):
             return Response(serializer.data, status=status.HTTP_200_OK)
 
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-    
-    
+
+
+class ReportCategoryViewSet(viewsets.ModelViewSet):
+    """ViewSet for managing report categories."""
+    queryset = ReportCategory.objects.all()
+    serializer_class = ReportCategorySerializer
+    permission_classes = [IsAuthenticated]
+
+
+class TestTypeViewSet(viewsets.ModelViewSet):
+    queryset = TestType.objects.all()
+    serializer_class = TestTypeSerializer
+    permission_classes = [IsAuthenticated]
     
 class PatientReportViewSet(viewsets.ModelViewSet):
     queryset = PatientReport.objects.all().order_by('-uploaded_at')

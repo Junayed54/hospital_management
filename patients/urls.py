@@ -4,6 +4,8 @@ from django.views.generic import TemplateView
 from rest_framework.routers import DefaultRouter
 
 router = DefaultRouter()
+router.register(r'report-categories', ReportCategoryViewSet)
+router.register(r'test-types', TestTypeViewSet)
 router.register(r'patient-reports', PatientReportViewSet, basename='patient-report')
 router.register(r'user-prescriptions', PatientPrescriptionViewSet, basename='patient-prescription')
 

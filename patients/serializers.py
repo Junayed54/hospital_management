@@ -41,18 +41,44 @@ class PatientSerializer(serializers.ModelSerializer):
             'blood_type': {'required': False},
         }
         
+class ReportCategorySerializer(serializers.ModelSerializer):
+    """Serializes report categories (e.g., Blood Test, X-Ray)"""
+    class Meta:
+        model = ReportCategory
+        fields = ['id', 'name']
+
+class TestTypeSerializer(serializers.ModelSerializer):
+    """Serializes specific test types (e.g., CBC, Lipid Profile) under categories"""
+    category_name = serializers.CharField(source='category.name', read_only=True)
+
+    class Meta:
+        model = TestType
+        fields = ['id', 'name', 'category', 'category_name']
+        extra_kwargs = {'category': {'write_only': True}} 
+
 class PatientReportSerializer(serializers.ModelSerializer):
+    """Serializes patient reports with linked test type"""
     patient_username = serializers.CharField(source='patient.username', read_only=True)
-    patient = serializers.HiddenField(default=serializers.CurrentUserDefault())  # Automatically assign patient
+    patient = serializers.HiddenField(default=serializers.CurrentUserDefault())  # Automatically assigns patient
+    test_type = TestTypeSerializer()  # Nested serializer for test type details
 
     class Meta:
         model = PatientReport
-        fields = ['id', 'patient', 'patient_username', 'title', 'category', 'description', 'report_file', 'uploaded_at']
-        read_only_fields = ['patient', 'uploaded_at']  # Patient is now read-only
+        fields = ['id', 'patient', 'patient_username', 'title', 'test_type', 'description', 'report_file', 'uploaded_at']
+        read_only_fields = ['patient', 'uploaded_at']
 
-    def perform_create(self, serializer):
-        print(self.request.user)  # Debugging: Check if user is properly authenticated
-        serializer.save(patient=self.request.user)
+class PatientReportCreateSerializer(serializers.ModelSerializer):
+    """Serializer for creating reports (accepts test_type ID instead of full object)"""
+    patient = serializers.HiddenField(default=serializers.CurrentUserDefault())
+
+    class Meta:
+        model = PatientReport
+        fields = ['title', 'test_type', 'description', 'report_file', 'patient']
+
+    def create(self, validated_data):
+        """Ensures the authenticated user is assigned as the patient"""
+        validated_data['patient'] = self.context['request'].user
+        return super().create(validated_data)
 
 class PatientPrescriptionSerializer(serializers.ModelSerializer):
     patient_username = serializers.CharField(source='patient.username', read_only=True)
