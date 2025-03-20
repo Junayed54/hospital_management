@@ -223,7 +223,7 @@ class AppointmentSerializer(serializers.ModelSerializer):
         if validated_data.get('status') == 'cancelled' and instance.status != 'cancelled':
             availability = DoctorAvailability.objects.filter(
                 doctor=instance.doctor,
-                date=instance.appointment_date
+                date=instance.appointment_date.date()
             ).first()
 
             if availability:

@@ -516,7 +516,7 @@ class PendingAppointmentsViewSet(viewsets.ModelViewSet):
         """
         Fetch all accepted appointments for the given doctor, ordered by date.
         """
-        accepted_appointments = Appointment.objects.filter(doctor=doctor, status="accepted").order_by("date")
+        accepted_appointments = Appointment.objects.filter(doctor=doctor, status="accepted").order_by("appointment_date")
         return AppointmentSerializer(accepted_appointments, many=True).data
 
     @action(detail=False, methods=["post"])
