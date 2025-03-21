@@ -125,7 +125,7 @@ class AppointmentSerializer(serializers.ModelSerializer):
             'patient_problem',
             'status',
             'note'
-        ]
+        ] # look this and update create when slot is not available it send a message not give any error
         extra_kwargs = {
             'appointment_date': {'read_only': True},  # Derived dynamically
             'doctor': {'read_only': True},  # Derived from doctor_id
@@ -141,26 +141,27 @@ class AppointmentSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         """
         Automatically assigns an appointment time based on slot availability.
+        If slots are full, returns a message instead of raising an error.
         """
         request = self.context['request']
         doctor_id = request.data.get('doctor_id')
         availability_id = request.data.get('slot_id')
 
         if not doctor_id:
-            raise serializers.ValidationError({"doctor_id": "This field is required."})
+            return Response({"error": "Doctor ID is required."}, status=status.HTTP_400_BAD_REQUEST)
         if not availability_id:
-            raise serializers.ValidationError({"slot_id": "This field is required."})
+            return Response({"error": "Slot ID is required."}, status=status.HTTP_400_BAD_REQUEST)
 
         # Resolve doctor and availability (slot)
         try:
             doctor = Doctor.objects.get(id=doctor_id)
         except Doctor.DoesNotExist:
-            raise serializers.ValidationError({"doctor_id": "Invalid doctor ID."})
+            return Response({"error": "Invalid doctor ID."}, status=status.HTTP_400_BAD_REQUEST)
 
         try:
             availability = DoctorAvailability.objects.get(id=availability_id, doctor=doctor)
         except DoctorAvailability.DoesNotExist:
-            raise serializers.ValidationError({"slot_id": "Invalid slot ID for the specified doctor."})
+            return Response({"error": "Invalid slot ID for the specified doctor."}, status=status.HTTP_400_BAD_REQUEST)
 
         # Check for slot availability
         if availability.booked_patients >= availability.max_patients:
@@ -172,21 +173,21 @@ class AppointmentSerializer(serializers.ModelSerializer):
             user = User.objects.filter(phone_number=phone_number).first()
 
             if user:
-                # Get the patient by phone number (to avoid multiple objects issue)
                 patient = Patient.objects.filter(user=user).first()
                 if not patient:
-                    patient = Patient.objects.create(user=user, name=patient_name)  
+                    patient = Patient.objects.create(user=user, name=patient_name)
             else:
-                patient_obj = Patient.objects.create(
-                    name=patient_name
-                )
+                patient = Patient.objects.create(name=patient_name)
 
             # Add patient to the waiting list
             WaitingList.objects.create(
                 availability=availability,
-                patient=patient_obj
+                patient=patient
             )
-            raise serializers.ValidationError({"slot_id": "No slots available. Added to the waiting list."})
+            
+            return Response({
+                "message": "No slots available. You have been added to the waiting list."
+            }, status=status.HTTP_200_OK)
 
         # Calculate appointment time
         time_per_patient = availability.calculate_time_per_patient()
@@ -205,7 +206,9 @@ class AppointmentSerializer(serializers.ModelSerializer):
 
         # Validate appointment time
         if appointment_time.time() >= availability.get_end_time():
-            raise serializers.ValidationError({"slot_id": "No available slots within working hours."})
+            return Response({
+                "message": "No available slots within working hours."
+            }, status=status.HTTP_200_OK)
 
         # Update availability and save appointment
         availability.booked_patients += 1
@@ -215,7 +218,12 @@ class AppointmentSerializer(serializers.ModelSerializer):
         validated_data['doctor'] = doctor
         validated_data['appointment_date'] = appointment_time
 
-        return super().create(validated_data)
+        appointment = super().create(validated_data)
+        return Response({
+            "message": "Appointment successfully created.",
+            "appointment": AppointmentSerializer(appointment).data
+        }, status=status.HTTP_201_CREATED)
+
 
 
     def update(self, instance, validated_data):

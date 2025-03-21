@@ -523,6 +523,7 @@ class PendingAppointmentsViewSet(viewsets.ModelViewSet):
     def accept(self, request):
         """
         Accept an appointment using the ID from request body.
+        Prevents multiple accepted appointments for the same patient.
         """
         appointment_id = request.data.get("appointment_id")
         if not appointment_id:
@@ -531,7 +532,21 @@ class PendingAppointmentsViewSet(viewsets.ModelViewSet):
         appointment = get_object_or_404(Appointment, id=appointment_id)
 
         if appointment.status != "pending":
-            return Response({"error": "Appointment is already processed."}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({
+                "message": "Appointment is already processed.",
+                "status": appointment.status
+            }, status=status.HTTP_200_OK)  # Returning 200 OK instead of an error
+
+        # Check if the patient already has an accepted appointment
+        existing_accepted_appointment = Appointment.objects.filter(
+            patient=appointment.patient, 
+            status="accepted"
+        ).exists()
+
+        if existing_accepted_appointment:
+            return Response({
+                "message": "This patient already has an accepted appointment."
+            }, status=status.HTTP_200_OK)  # Returning message instead of an error
 
         appointment.status = "accepted"
         appointment.save()
@@ -546,6 +561,7 @@ class PendingAppointmentsViewSet(viewsets.ModelViewSet):
             "message": "Appointment accepted successfully.",
             "accepted_appointments": accepted_appointments
         }, status=status.HTTP_200_OK)
+
 
     @action(detail=False, methods=["post"])
     def reject(self, request):

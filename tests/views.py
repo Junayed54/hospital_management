@@ -38,9 +38,18 @@ class TestOrderViewSet(viewsets.ModelViewSet):
         # Get the list of test IDs from the request data
         test_types = request.data.get('test_types', [])
         
+        
         if not test_types:
             return Response({"error": "At least one test type must be provided."}, status=status.HTTP_400_BAD_REQUEST)
 
+        
+        latitude = request.data.get('latitude', None)
+        longitude = request.data.get('longitude', None)
+        address = request.data.get('address', "")
+
+        # Convert empty strings to None for latitude and longitude
+        latitude = None if latitude in [None, ""] else latitude
+        longitude = None if longitude in [None, ""] else longitude
         # The user sending the request (assuming user is authenticated)
         user = request.user  # Assuming the user is authenticated and passed in the request
 
@@ -52,7 +61,14 @@ class TestOrderViewSet(viewsets.ModelViewSet):
                 test_type = TestType.objects.get(id=test_type_id)
                 
                 # Create the TestOrder instance
-                order = TestOrder.objects.create(user=user, test_type=test_type, status='requested')
+                order = TestOrder.objects.create(
+                    user=user, 
+                    test_type=test_type, 
+                    status='requested',
+                    latitude=latitude,
+                    longitude=longitude,
+                    address=address
+                )
                 orders.append(order)
                 
             except TestType.DoesNotExist:
@@ -64,14 +80,14 @@ class TestOrderViewSet(viewsets.ModelViewSet):
         for order in orders:
             if order.status == 'requested':  # Only create when the status is 'requested'
                 # Assign the first available staff member to the assignment
-                staff_member = User.objects.filter(role='staff').first()  # Example of assigning the first staff
-                if staff_member:
-                    TestCollectionAssignment.objects.create(
-                        test_order=order,
-                        status='Assigned',
-                        collection_date=now(),  # Set the collection date/time
-                        collector=staff_member  # Assuming you have a field for the collector
-                    )
+                # staff_member = User.objects.filter(role='staff').first()  # Example of assigning the first staff
+                
+                TestCollectionAssignment.objects.create(
+                    test_order=order,
+                    status='Assigned',
+                    collection_date=now(),  # Set the collection date/time
+                    # collector=staff_member  # Assuming you have a field for the collector
+                )
 
         # Return a response with the created orders
         return Response(TestOrderSerializer(orders, many=True).data, status=status.HTTP_201_CREATED)
@@ -86,6 +102,23 @@ class TestOrderViewSet(viewsets.ModelViewSet):
         self.perform_update(serializer)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
+
+class TestOrderByStatusView(APIView):
+    """
+    API endpoint to view all test orders grouped by status.
+    """
+    permission_classes = [IsAuthenticated]  # Restrict access to authenticated users
+
+    def get(self, request):
+        test_orders = TestOrder.objects.all().order_by('status', '-order_date')
+        grouped_orders = {}
+
+        for status, _ in TestOrder.STATUS_CHOICES:
+            grouped_orders[status] = TestOrderSerializer(
+                test_orders.filter(status=status), many=True
+            ).data
+
+        return Response(grouped_orders)
 
 # View for TestCollectionAssignment model
 class TestCollectionAssignmentViewSet(viewsets.ModelViewSet):
