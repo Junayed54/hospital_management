@@ -122,6 +122,21 @@ class TestTypeViewSet(viewsets.ModelViewSet):
     queryset = TestType.objects.all()
     serializer_class = TestTypeSerializer
     permission_classes = [IsAuthenticated]
+
+    def finalize_response(self, request, response, *args, **kwargs):
+        if isinstance(response.data, dict) and 'detail' in response.data:
+            # Keep default behavior for error messages
+            return super().finalize_response(request, response, *args, **kwargs)
+
+        if response.status_code in [status.HTTP_201_CREATED, status.HTTP_200_OK]:
+            if not response.data:  # Ensure a response even if DRF sends an empty response
+                if request.method == "DELETE":
+                    response.data = {"message": "Deleted successfully"}
+                else:
+                    instance = self.get_object() if "pk" in kwargs else self.get_queryset()
+                    response.data = self.get_serializer(instance, many=not "pk" in kwargs).data
+        return super().finalize_response(request, response, *args, **kwargs)
+
     
 class PatientReportViewSet(viewsets.ModelViewSet):
     queryset = PatientReport.objects.all().order_by('-uploaded_at')

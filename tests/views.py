@@ -119,6 +119,16 @@ class TestOrderByStatusView(APIView):
             ).data
 
         return Response(grouped_orders)
+    
+    
+    
+class RequestedTestOrderViewSet(viewsets.ModelViewSet):
+    """
+    View to retrieve and manage test orders with 'requested' status.
+    """
+    queryset = TestOrder.objects.filter(status="requested").order_by('-order_date')
+    serializer_class = TestOrderSerializer
+    permission_classes = [IsAuthenticated]
 
 # View for TestCollectionAssignment model
 class TestCollectionAssignmentViewSet(viewsets.ModelViewSet):
@@ -156,11 +166,16 @@ class TestAssignments(APIView):
         return Response(
             {
                 "completed_assignments": completed_assignments_serializer.data,
-                "assigned_assignments": assigned_assignments_serializer.data,
+                "new_ordered_assignments": assigned_assignments_serializer.data,
                 "in_progress_assignments": in_progress_assignments_serializer.data,
             },
             status=status.HTTP_200_OK,
         )
+
+
+
+
+
 
 
 class UpdateAssignmentCollectorAPIView(APIView):

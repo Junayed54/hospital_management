@@ -9,7 +9,7 @@ router.register(r'test-types', TestTypeViewSet)
 router.register(r'test-orders', TestOrderViewSet)
 router.register(r'test-collection-assignments', TestCollectionAssignmentViewSet)
 router.register(r'test-results', TestResultViewSet)
-
+router.register(r'requested-testorders', RequestedTestOrderViewSet, basename='requested-testorder')
 
 
 urlpatterns = [
