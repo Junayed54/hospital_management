@@ -51,9 +51,11 @@ urlpatterns = [
     
     
     
-    
-    
     path('api/create-doctor/', CreateDoctorView.as_view(), name='doctor_create'),
+    
+    path('specialties/create/', SpecialtyCreateView.as_view(), name='create-specialty'),
+    path('specialties/update/<int:pk>/', SpecialtyUpdateView.as_view(), name='update-specialty'),
+    path('specialties/delete/<int:pk>/', SpecialtyDeleteView.as_view(), name='delete-specialty'),
 ]
 
 

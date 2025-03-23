@@ -106,9 +106,9 @@ class ReportCategory(models.Model):
     def __str__(self):
         return self.name
 
-class TestType(models.Model):
+class PatientTestType(models.Model):
     """Stores specific tests under a category, e.g., 'CBC', 'Lipid Profile' under 'Blood Test'."""
-    category = models.ForeignKey(ReportCategory, on_delete=models.CASCADE, related_name="test_types")
+    category = models.ForeignKey(ReportCategory, on_delete=models.CASCADE, related_name="patient_test_types")
     name = models.CharField(max_length=100, unique=True)
 
     def __str__(self):
@@ -118,7 +118,7 @@ class PatientReport(models.Model):
     """Links reports to a specific test type instead of a hardcoded category."""
     patient = models.ForeignKey(User, on_delete=models.CASCADE, related_name='reports')  
     title = models.CharField(max_length=255)  
-    test_type = models.ForeignKey(TestType, on_delete=models.CASCADE, null=True, blank=True, related_name="patient_reports")  # Dynamic linking
+    test_type = models.ForeignKey(PatientTestType, on_delete=models.CASCADE, null=True, blank=True, related_name="patient_reports")  # Dynamic linking
     description = models.TextField(blank=True, null=True)  
     report_file = models.FileField(upload_to='patient_reports/')  
     uploaded_at = models.DateTimeField(auto_now_add=True)  

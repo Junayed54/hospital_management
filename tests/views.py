@@ -3,7 +3,7 @@ from rest_framework.views import APIView
 from .models import TestType, TestOrder, TestCollectionAssignment, TestResult
 from .serializers import TestTypeSerializer, TestOrderSerializer, TestCollectionAssignmentSerializer, TestResultSerializer
 from rest_framework.response import Response
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework import status
 from django.utils.timezone import now
 from rest_framework import generics
@@ -15,6 +15,7 @@ from accounts.permissions import *
 class TestTypeViewSet(viewsets.ModelViewSet):
     queryset = TestType.objects.all()
     serializer_class = TestTypeSerializer
+    permission_classes = [AllowAny]
     # You can add additional filtering, permissions, etc. here if needed
 
 class TestTypeCreateView(generics.CreateAPIView):

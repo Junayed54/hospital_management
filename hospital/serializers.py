@@ -73,15 +73,29 @@ class CertificationFileSerializer(serializers.ModelSerializer):
         model = CertificationFile
         fields = ['id', 'file']
 
+from rest_framework import serializers
+from .models import Doctor
+
 class DoctorSerializer(serializers.ModelSerializer):
-    user = CustomUserSerializer(read_only=True)
-    availability = DoctorAvailabilitySerializer(many=True, read_only=True)
-    certifications = CertificationFileSerializer(many=True, read_only=True)  # Nested certifications
+    profile_picture = serializers.ImageField(required=False)  # Ensure profile picture is optional
 
     class Meta:
         model = Doctor
-        fields = ['id', 'full_name', 'user', 'specialty', 'license_number', 'bio', 'experience_years', 
-                  'education', 'consultation_fee', 'contact_email', 'contact_phone', 'availability', 'certifications']
+        fields = [
+            'id', 'user', 'full_name', 'nid_number', 'license_number', 'bio', 'about',
+            'experience_years', 'education', 'contact_email', 'contact_phone',
+            'address', 'profile_picture'
+        ]
+        read_only_fields = ['user']  # Prevent user from being modified
+
+    def validate_nid_number(self, value):
+        """Ensure the NID number is valid (numeric and length between 8-20)."""
+        if not value.isdigit():
+            raise serializers.ValidationError("NID number must contain only digits.")
+        if not (8 <= len(value) <= 20):
+            raise serializers.ValidationError("NID number must be between 8 to 20 digits.")
+        return value
+
     # def create(self, validated_data):
     #     # Extract user data
     #     user_data = validated_data.pop('user')
@@ -90,7 +104,19 @@ class DoctorSerializer(serializers.ModelSerializer):
     #     # Create doctor
     #     doctor = Doctor.objects.create(user=user, **validated_data)
     #     return doctor
-    
+
+
+class SpecialtySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Specialty
+        fields = '__all__'  # Include all fields
+        read_only_fields = ['user']  # Prevent user from manually setting this
+
+    def validate_fee(self, value):
+        """Ensure the fee is not negative"""
+        if value < 0:
+            raise serializers.ValidationError("Fee must be a positive value.")
+        return value
     
 # class PatientSerializer(serializers.ModelSerializer):
 #     user = CustomUserSerializer(read_only=True)

@@ -47,12 +47,12 @@ class ReportCategorySerializer(serializers.ModelSerializer):
         model = ReportCategory
         fields = ['id', 'name']
 
-class TestTypeSerializer(serializers.ModelSerializer):
+class PatientTestTypeSerializer(serializers.ModelSerializer):
     """Serializes specific test types (e.g., CBC, Lipid Profile) under categories"""
     category_name = serializers.CharField(source='category.name', read_only=True)
 
     class Meta:
-        model = TestType
+        model = PatientTestType
         fields = ['id', 'name', 'category', 'category_name']
         extra_kwargs = {'category': {'write_only': True}} 
 
@@ -60,7 +60,7 @@ class PatientReportSerializer(serializers.ModelSerializer):
     """Serializes patient reports with linked test type"""
     patient_username = serializers.CharField(source='patient.username', read_only=True)
     patient = serializers.HiddenField(default=serializers.CurrentUserDefault())  # Automatically assigns patient
-    test_type = TestTypeSerializer()  # Nested serializer for test type details
+    test_type = PatientTestTypeSerializer()  # Nested serializer for test type details
 
     class Meta:
         model = PatientReport

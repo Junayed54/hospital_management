@@ -9,21 +9,28 @@ from django.contrib.auth import get_user_model
 User = get_user_model()
 
 
+from django.db import models
+from django.contrib.auth import get_user_model
+
+User = get_user_model()
+
 class Doctor(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='doctor_profile')
     full_name = models.CharField(max_length=150, default="")
-    specialty = models.CharField(max_length=100)
+    nid_number = models.CharField(max_length=20, unique=True, null=True, blank="True")  # New Field
     license_number = models.CharField(max_length=50, unique=True)
     bio = models.TextField(blank=True)
+    about = models.TextField(blank=True)  # New Field
     experience_years = models.IntegerField(default=0)
     education = models.CharField(max_length=200, blank=True)
-    consultation_fee = models.DecimalField(max_digits=8, decimal_places=2)
     contact_email = models.EmailField(blank=True)
     contact_phone = models.CharField(max_length=15, blank=True)
+    address = models.TextField(blank=True)  # New Field
+    profile_picture = models.ImageField(upload_to="doctor_profiles/", blank=True, null=True)  # New Field
 
-    
     def next_available_slot(self):
         from .models import DoctorAvailability  # Avoid circular imports
+        from datetime import datetime
         now = datetime.now()
         next_slot = DoctorAvailability.objects.filter(
             doctor=self, 
@@ -31,14 +38,27 @@ class Doctor(models.Model):
             is_booked=False
         ).order_by('date', 'start_time').first()
         return next_slot
-    
-    
+
     def __str__(self):
-        return f"Dr. {self.full_name} ({self.specialty})"
+        specialties = ", ".join([specialty.name for specialty in self.specialties.all()])
+        return f"Dr. {self.full_name} ({specialties})" if specialties else f"Dr. {self.full_name}"
+
 
 def certification_upload_path(instance, filename):
     """Generate a unique upload path for certification files."""
     return os.path.join('certifications', str(instance.doctor.id), filename)
+
+
+class Specialty(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="specialties", null=True, blank=True)  # One doctor can have multiple specialties
+    name = models.CharField(max_length=100)
+    services = models.TextField(blank=True, help_text="Comma-separated list of services")
+    fee = models.DecimalField(max_digits=8, decimal_places=2, default=0.00)
+    about_service = models.TextField(blank=True, help_text="Details about the service provided")
+
+    def __str__(self):
+        return f"{self.name} ({self.user})"
+
 
 class CertificationFile(models.Model):
     doctor = models.ForeignKey(
@@ -51,7 +71,6 @@ class CertificationFile(models.Model):
 
     def __str__(self):
         return f"Certification for {self.doctor.full_name}: {os.path.basename(self.file.name)}"
-
 
 
 

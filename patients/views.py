@@ -118,9 +118,9 @@ class ReportCategoryViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
 
 
-class TestTypeViewSet(viewsets.ModelViewSet):
-    queryset = TestType.objects.all()
-    serializer_class = TestTypeSerializer
+class PatientTestTypeViewSet(viewsets.ModelViewSet):
+    queryset = PatientTestType.objects.all()
+    serializer_class = PatientTestTypeSerializer
     permission_classes = [IsAuthenticated]
 
     def finalize_response(self, request, response, *args, **kwargs):

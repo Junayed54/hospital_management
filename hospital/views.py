@@ -1,9 +1,9 @@
 from django.shortcuts import render, get_object_or_404
 from rest_framework import generics, permissions
 from rest_framework.generics import RetrieveAPIView
-from .models import Doctor, Appointment, DoctorAvailability, WaitingList, Treatment, Prescription, Test
+from .models import *
 from patients.models import Patient, BPLevel, SugarLevel, HeartRate, CholesterolLevel
-from .serializers import DoctorSerializer, AppointmentSerializer, TreatmentSerializer, PrescriptionSerializer, DoctorAvailabilitySerializer
+from .serializers import *
 from patients.serializers import PatientSerializer
 from tests.serializers import TestCollectionAssignmentSerializer
 from rest_framework.exceptions import ValidationError
@@ -604,7 +604,7 @@ class CancelAppointmentView(APIView):
         try:
             # Get the appointment by id and the phone_number linked to the user
             appointment = Appointment.objects.get(id=appointment_id, phone_number=str(request.user))
-
+            
             # Check if the appointment is in 'pending' status
             if appointment.status == 'pending':
                 appointment.cancel()  # Assuming `cancel()` is a method on the Appointment model
@@ -790,3 +790,42 @@ class CreateDoctorView(APIView):
 
         except Exception as e:
             return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        
+        
+        
+        
+        
+# Speaciality update
+class SpecialtyCreateView(generics.CreateAPIView):
+    """Create a new specialty"""
+    queryset = Specialty.objects.all()
+    serializer_class = SpecialtySerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def perform_create(self, serializer):
+        """Ensure the specialty is assigned to the logged-in user (doctor)"""
+        serializer.save(user=self.request.user)
+
+class SpecialtyUpdateView(generics.UpdateAPIView):
+    """Update an existing specialty (supports partial update)"""
+    queryset = Specialty.objects.all()
+    serializer_class = SpecialtySerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        """Ensure a doctor can update only their own specialties"""
+        return Specialty.objects.filter(user=self.request.user)
+
+    def patch(self, request, *args, **kwargs):
+        """Allow partial updates"""
+        kwargs['partial'] = True  # Enables partial update
+        return super().patch(request, *args, **kwargs)
+
+class SpecialtyDeleteView(generics.DestroyAPIView):
+    """Delete a specialty"""
+    queryset = Specialty.objects.all()
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        """Ensure a doctor can delete only their own specialties"""
+        return Specialty.objects.filter(user=self.request.user)

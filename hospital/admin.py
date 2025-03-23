@@ -3,14 +3,19 @@ from .models import Doctor, DoctorAvailability, WaitingList, Appointment, Treatm
 
 # Custom admin configuration for Doctor
 class DoctorAdmin(admin.ModelAdmin):
-    list_display = ('id', 'full_name', 'user', 'specialty', 'license_number', 'experience_years', 'consultation_fee')
-    search_fields = ('full_name', 'specialty', 'license_number')
-    list_filter = ('specialty', 'experience_years')
+    list_display = ('id', 'full_name', 'user', 'license_number', 'experience_years')
+    search_fields = ('full_name', 'license_number')
+    list_filter = ('experience_years',)
+
     fieldsets = (
-        ('Personal Info', {'fields': ('user','full_name', 'specialty', 'license_number', 'bio')}),
-        ('Professional Info', {'fields': ('experience_years', 'education', 'consultation_fee')}),
+        ('Personal Info', {'fields': ('user', 'full_name', 'license_number', 'bio')}),
+        ('Professional Info', {'fields': ('experience_years', 'education')}),
         ('Contact Info', {'fields': ('contact_email', 'contact_phone')}),
     )
+
+    # def get_specialties(self, obj):
+    #     return ", ".join([s.name for s in obj.specialties.all()])
+    # get_specialties.short_description = 'Specialties'  # Admin column name
 
 @admin.register(DoctorAvailability)
 class DoctorAvailabilityAdmin(admin.ModelAdmin):
