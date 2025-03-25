@@ -75,11 +75,12 @@ class PasswordUpdateView(APIView):
 
     def post(self, request, *args, **kwargs):
         user = request.user
+        print(user)
         current_password = request.data.get('current_password')
         new_password = request.data.get('new_password')
 
         if not current_password or not new_password:
-            return Response({"error": "Both fields are required."}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"error": "current and new password required."}, status=status.HTTP_400_BAD_REQUEST)
 
         if not check_password(current_password, user.password):
             return Response({"error": "Current password is incorrect."}, status=status.HTTP_400_BAD_REQUEST)

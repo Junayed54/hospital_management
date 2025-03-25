@@ -118,9 +118,9 @@ class ReportCategoryViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
 
 
-class PatientTestTypeViewSet(viewsets.ModelViewSet):
-    queryset = PatientTestType.objects.all()
-    serializer_class = PatientTestTypeSerializer
+class PatientReportTypeViewSet(viewsets.ModelViewSet):
+    queryset = ReportType.objects.all()
+    serializer_class = PatientReportTypeSerializer
     permission_classes = [IsAuthenticated]
 
     def finalize_response(self, request, response, *args, **kwargs):
@@ -140,11 +140,11 @@ class PatientTestTypeViewSet(viewsets.ModelViewSet):
     
 class PatientReportViewSet(viewsets.ModelViewSet):
     queryset = PatientReport.objects.all().order_by('-uploaded_at')
-    serializer_class = PatientReportSerializer
+    serializer_class = PatientReportCreateSerializer
     permission_classes = [IsAuthenticated]
 
-    # def perform_create(self, serializer):
-    #     serializer.save(patient=self.request.user)
+    def perform_create(self, serializer):
+        serializer.save(patient=self.request.user)
 
     def get_queryset(self):
         return PatientReport.objects.filter(patient=self.request.user)  # Patients can only see their own reports

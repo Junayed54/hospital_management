@@ -40,8 +40,8 @@ class Doctor(models.Model):
         return next_slot
 
     def __str__(self):
-        specialties = ", ".join([specialty.name for specialty in self.specialties.all()])
-        return f"Dr. {self.full_name} ({specialties})" if specialties else f"Dr. {self.full_name}"
+        # specialties = ", ".join([specialty.name for specialty in self.specialties.all()])
+        return f"Dr. {self.full_name}"
 
 
 def certification_upload_path(instance, filename):
@@ -153,6 +153,11 @@ class Appointment(models.Model):
         ('cancelled', 'Cancelled'),
     ]
 
+    APPOINTMENT_TYPE_CHOICES = [
+        ('online', 'Online'),
+        ('offline', 'Offline'),
+    ]
+
     doctor = models.ForeignKey(Doctor, on_delete=models.SET_NULL, null=True, blank=True)
     patient = models.ForeignKey(Patient, on_delete=models.SET_NULL, null=True, blank=True)
     patient_name = models.CharField(max_length=250)
@@ -164,12 +169,10 @@ class Appointment(models.Model):
     video_link = models.CharField(max_length=500, null=True, blank=True)
     patient_problem = models.TextField(null=True, blank=True)
     status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='pending')
+    type = models.CharField(max_length=10, choices=APPOINTMENT_TYPE_CHOICES, default='offline')
     note = models.TextField(null=True, blank=True)
+
     class Meta:
-        # constraints = [
-        #     models.UniqueConstraint(fields=['doctor', 'appointment_date'], name='unique_doctor_date'),
-        #     models.UniqueConstraint(fields=['doctor', 'appointment_date', 'phone_number'], name='unique_doctor_appointment')
-        # ]
         pass
 
     def save(self, *args, **kwargs):
@@ -178,13 +181,12 @@ class Appointment(models.Model):
         # Save the instance first
         super().save(*args, **kwargs)
 
-        # Handle video link generation for new appointments
-        if is_new and self.appointment_date and not self.video_link:
+        # Handle video link generation for online appointments
+        if is_new and self.type == 'online' and self.appointment_date and not self.video_link:
             try:
                 self.generate_agora_link()
                 super().save(update_fields=['video_link'])
             except Exception as e:
-                # Log the error for debugging purposes
                 logger.error(f"Error generating Agora link for Appointment {self.id}: {str(e)}")
 
         # Assign appointment time for accepted appointments
@@ -198,7 +200,6 @@ class Appointment(models.Model):
                 try:
                     availability.assign_appointment_time()
                 except Exception as e:
-                    # Log the error for debugging purposes
                     logger.error(f"Error assigning appointment time for Appointment {self.id}: {str(e)}")
 
     def generate_agora_link(self):
@@ -211,14 +212,12 @@ class Appointment(models.Model):
         )
         self.video_link = f"http://127.0.0.1:8000/call/{channel_name}?token={token}"
 
-    
     def cancel(self):
         """Cancel an appointment and handle promotion of pending patients."""
         if self.status in ['accepted', 'pending']:
             self.status = 'cancelled'
             self.save(update_fields=['status'])
 
-            # Handle promotion of pending patients
             availability = DoctorAvailability.objects.filter(
                 doctor=self.doctor,
                 date=self.appointment_date.date()
@@ -229,9 +228,9 @@ class Appointment(models.Model):
         else:
             raise ValueError("Cannot cancel an appointment that has already been rejected or cancelled.")
 
-        
     def __str__(self):
         return f"{self.patient_name} - {self.doctor}"
+
 
 class Treatment(models.Model):
     patient = models.ForeignKey(Patient, on_delete=models.CASCADE)

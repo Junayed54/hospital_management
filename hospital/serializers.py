@@ -73,37 +73,6 @@ class CertificationFileSerializer(serializers.ModelSerializer):
         model = CertificationFile
         fields = ['id', 'file']
 
-from rest_framework import serializers
-from .models import Doctor
-
-class DoctorSerializer(serializers.ModelSerializer):
-    profile_picture = serializers.ImageField(required=False)  # Ensure profile picture is optional
-
-    class Meta:
-        model = Doctor
-        fields = [
-            'id', 'user', 'full_name', 'nid_number', 'license_number', 'bio', 'about',
-            'experience_years', 'education', 'contact_email', 'contact_phone',
-            'address', 'profile_picture'
-        ]
-        read_only_fields = ['user']  # Prevent user from being modified
-
-    def validate_nid_number(self, value):
-        """Ensure the NID number is valid (numeric and length between 8-20)."""
-        if not value.isdigit():
-            raise serializers.ValidationError("NID number must contain only digits.")
-        if not (8 <= len(value) <= 20):
-            raise serializers.ValidationError("NID number must be between 8 to 20 digits.")
-        return value
-
-    # def create(self, validated_data):
-    #     # Extract user data
-    #     user_data = validated_data.pop('user')
-    #     user = User.objects.create_user(**user_data)
-
-    #     # Create doctor
-    #     doctor = Doctor.objects.create(user=user, **validated_data)
-    #     return doctor
 
 
 class SpecialtySerializer(serializers.ModelSerializer):
@@ -118,6 +87,41 @@ class SpecialtySerializer(serializers.ModelSerializer):
             raise serializers.ValidationError("Fee must be a positive value.")
         return value
     
+class DoctorSerializer(serializers.ModelSerializer):
+    profile_picture = serializers.ImageField(required=False)
+    specialties = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Doctor
+        fields = [
+            'id', 'user', 'full_name', 'nid_number', 'license_number', 'bio', 'about',
+            'experience_years', 'education', 'contact_email', 'contact_phone',
+            'address', 'profile_picture', 'specialties'
+        ]
+        read_only_fields = ['user']
+    
+    def validate_nid_number(self, value):
+        if not value.isdigit():
+            raise serializers.ValidationError("NID number must contain only digits.")
+        if not (8 <= len(value) <= 20):
+            raise serializers.ValidationError("NID number must be between 8 to 20 digits.")
+        return value
+    
+    def get_specialties(self, obj):
+        return SpecialtySerializer(obj.user.specialties.all(), many=True).data
+
+    # def create(self, validated_data):
+    #     # Extract user data
+    #     user_data = validated_data.pop('user')
+    #     user = User.objects.create_user(**user_data)
+
+    #     # Create doctor
+    #     doctor = Doctor.objects.create(user=user, **validated_data)
+    #     return doctor
+
+
+
+    
 # class PatientSerializer(serializers.ModelSerializer):
 #     user = CustomUserSerializer(read_only=True)
 
@@ -130,18 +134,150 @@ from rest_framework import serializers
 from datetime import datetime, timedelta
 from .models import Appointment, Doctor, DoctorAvailability, Patient, WaitingList, User
 
+from rest_framework import serializers
+from rest_framework.response import Response
+from rest_framework import status
+from datetime import datetime, timedelta
+from .models import Appointment, Doctor, DoctorAvailability, WaitingList, Patient, User
+
+# class AppointmentSerializer(serializers.ModelSerializer):
+    # doctor_name = serializers.SerializerMethodField(read_only=True)
+    # # doctor_speciality = serializers.SerializerMethodField()
+    # # patient_name = serializers.SerializerMethodField(read_only=True) 
+    # class Meta:
+    #     model = Appointment
+    #     fields = [
+    #         'id',
+    #         'doctor',
+    #         'doctor_name',
+    #         # 'doctor_speciality',
+    #         'patient',
+    #         'patient_name',
+    #         'phone_number',
+    #         'email',
+    #         'address',
+    #         'appointment_date',
+    #         'video_link',
+    #         'patient_problem',
+    #         'status',
+    #         'note',
+    #         'type'  # Added field for online/offline appointments
+    #     ]
+    #     extra_kwargs = {
+    #         'appointment_date': {'read_only': True},
+    #         'doctor': {'read_only': True},
+    #         'patient': {'read_only': True},
+    #     }
+
+    # def get_doctor_name(self, obj):
+    #     if isinstance(obj, Appointment):  # Ensure obj is an instance of Appointment
+    #         return obj.doctor.full_name if obj.doctor else None
+    #     return None
+
+    # # def get_patient_name(self, obj):
+    # #     # Ensure patient is related to the appointment and has a name
+    # #     return obj.patient if obj.patient else None
+    # # def get_doctor_speciality(self, obj):
+    # #     return obj.doctor.specialty if obj.doctor else None
+
+    # def create(self, validated_data):
+    #     """
+    #     Automatically assigns an appointment time based on slot availability.
+    #     If slots are full, returns a message instead of raising an error.
+    #     """
+    #     request = self.context['request']
+    #     doctor_id = request.data.get('doctor_id')
+    #     availability_id = request.data.get('slot_id')
+
+    #     if not doctor_id:
+    #         return Response({"error": "Doctor ID is required."}, status=status.HTTP_400_BAD_REQUEST)
+    #     if not availability_id:
+    #         return Response({"error": "Slot ID is required."}, status=status.HTTP_400_BAD_REQUEST)
+
+    #     try:
+    #         doctor = Doctor.objects.get(id=doctor_id)
+    #     except Doctor.DoesNotExist:
+    #         return Response({"error": "Invalid doctor ID."}, status=status.HTTP_400_BAD_REQUEST)
+
+    #     try:
+    #         availability = DoctorAvailability.objects.get(id=availability_id, doctor=doctor)
+    #     except DoctorAvailability.DoesNotExist:
+    #         return Response({"error": "Invalid slot ID for the specified doctor."}, status=status.HTTP_400_BAD_REQUEST)
+    #     phone_number = request.data.get('phone_number')
+    #     email = request.data.get('email')
+
+    #     patient_name = request.data.get('patient_name')
+    #     user = User.objects.filter(phone_number=phone_number).first()
+    #     if user:
+    #         patient = Patient.objects.filter(user=user).first()
+    #         if not patient:
+    #             patient = Patient.objects.create(user=user, name=patient_name)
+    #     else:
+    #         patient = Patient.objects.create(name=patient_name)
+
+    #     # Check for slot availability
+    #     if availability.booked_patients >= availability.max_patients:
+            
+    #         # print(patient_name)
+            
+    #         # Check if patient exists by phone number
+            
+            
+            
+    #         # Add patient to the waiting list if no slots are available
+    #         WaitingList.objects.create(
+    #             availability=availability,
+    #             patient=patient
+    #         )
+    #         return Response({
+    #             "message": "No slots available. You have been added to the waiting list."
+    #         }, status=status.HTTP_200_OK)
+
+    #     # Calculate appointment time
+    #     time_per_patient = availability.calculate_time_per_patient()
+    #     current_time = datetime.combine(availability.date, availability.start_time)
+    #     existing_appointments = Appointment.objects.filter(
+    #         doctor=doctor,
+    #         appointment_date__date=availability.date,
+    #         status='accepted'
+    #     ).order_by('appointment_date')
+
+    #     if existing_appointments.exists():
+    #         last_appointment_time = existing_appointments.last().appointment_date
+    #         appointment_time = last_appointment_time + timedelta(minutes=time_per_patient)
+    #     else:
+    #         appointment_time = current_time
+
+    #     if appointment_time.time() >= availability.get_end_time():
+    #         return Response({
+    #             "message": "No available slots within working hours."
+    #         }, status=status.HTTP_200_OK)
+
+    #     # Update availability and save appointment
+    #     availability.booked_patients += 1
+    #     availability.save()
+        
+    #     validated_data['doctor'] = doctor
+    #     validated_data['appointment_date'] = appointment_time
+    #     validated_data['patient'] = patient  # Ensure patient is linked to the appointment
+
+    #     appointment = super().create(validated_data)
+    #     return Response({
+    #         "message": "Appointment successfully created.",
+    #         "appointment": appointment
+    #     }, status=status.HTTP_201_CREATED)
+
 class AppointmentSerializer(serializers.ModelSerializer):
-    doctor_name = serializers.SerializerMethodField()
-    doctor_speciality = serializers.SerializerMethodField()
+    doctor_name = serializers.SerializerMethodField(read_only=True)
+    patient_name = serializers.SerializerMethodField(read_only=True) #added this line.
 
     class Meta:
         model = Appointment
         fields = [
             'id',
-            'doctor',  # Derived from doctor_id
+            'doctor',
             'doctor_name',
-            'doctor_speciality',
-            'patient',  # Derived internally for authenticated users or anonymous creation
+            'patient',
             'patient_name',
             'phone_number',
             'email',
@@ -150,72 +286,66 @@ class AppointmentSerializer(serializers.ModelSerializer):
             'video_link',
             'patient_problem',
             'status',
-            'note'
-        ] # look this and update create when slot is not available it send a message not give any error
+            'note',
+            'type'
+        ]
         extra_kwargs = {
-            'appointment_date': {'read_only': True},  # Derived dynamically
-            'doctor': {'read_only': True},  # Derived from doctor_id
-            'patient': {'read_only': True},  # Managed internally
+            'appointment_date': {'read_only': True},
+            'doctor': {'read_only': True},
+            'patient': {'read_only': True},
         }
 
     def get_doctor_name(self, obj):
-        return obj.doctor.full_name if obj.doctor else None
+        if isinstance(obj, Appointment):
+            return obj.doctor.full_name if obj.doctor else None
+        return None
 
-    def get_doctor_speciality(self, obj):
-        return obj.doctor.specialty if obj.doctor else None
+    def get_patient_name(self, obj):
+        if isinstance(obj, Appointment):
+            return obj.patient.name if obj.patient else None
+        return None
 
     def create(self, validated_data):
-        """
-        Automatically assigns an appointment time based on slot availability.
-        If slots are full, returns a message instead of raising an error.
-        """
         request = self.context['request']
         doctor_id = request.data.get('doctor_id')
         availability_id = request.data.get('slot_id')
 
         if not doctor_id:
-            return Response({"error": "Doctor ID is required."}, status=status.HTTP_400_BAD_REQUEST)
+            raise serializers.ValidationError({"error": "Doctor ID is required."})
         if not availability_id:
-            return Response({"error": "Slot ID is required."}, status=status.HTTP_400_BAD_REQUEST)
+            raise serializers.ValidationError({"error": "Slot ID is required."})
 
-        # Resolve doctor and availability (slot)
         try:
             doctor = Doctor.objects.get(id=doctor_id)
         except Doctor.DoesNotExist:
-            return Response({"error": "Invalid doctor ID."}, status=status.HTTP_400_BAD_REQUEST)
+            raise serializers.ValidationError({"error": "Invalid doctor ID."})
 
         try:
             availability = DoctorAvailability.objects.get(id=availability_id, doctor=doctor)
         except DoctorAvailability.DoesNotExist:
-            return Response({"error": "Invalid slot ID for the specified doctor."}, status=status.HTTP_400_BAD_REQUEST)
+            raise serializers.ValidationError({"error": "Invalid slot ID for the specified doctor."})
 
-        # Check for slot availability
+        phone_number = request.data.get('phone_number')
+        email = request.data.get('email')
+        patient_name = request.data.get('patient_name')
+
+        user = User.objects.filter(phone_number=phone_number).first()
+        if user:
+            patient = Patient.objects.filter(user=user).first()
+            if not patient:
+                patient = Patient.objects.create(user=user, name=patient_name)
+        else:
+            patient = Patient.objects.create(name=patient_name)
+
         if availability.booked_patients >= availability.max_patients:
-            # Handle waiting list addition
-            patient_name = validated_data.get('patient_name')
-            phone_number = validated_data.get('phone_number')
-            email = validated_data.get('email')
-
-            user = User.objects.filter(phone_number=phone_number).first()
-
-            if user:
-                patient = Patient.objects.filter(user=user).first()
-                if not patient:
-                    patient = Patient.objects.create(user=user, name=patient_name)
-            else:
-                patient = Patient.objects.create(name=patient_name)
-
-            # Add patient to the waiting list
             WaitingList.objects.create(
                 availability=availability,
                 patient=patient
             )
-            
-            return Response({
+            raise serializers.ValidationError({
                 "message": "No slots available. You have been added to the waiting list."
-            }, status=status.HTTP_200_OK)
+            })
 
-        # Calculate appointment time
         time_per_patient = availability.calculate_time_per_patient()
         current_time = datetime.combine(availability.date, availability.start_time)
         existing_appointments = Appointment.objects.filter(
@@ -230,25 +360,20 @@ class AppointmentSerializer(serializers.ModelSerializer):
         else:
             appointment_time = current_time
 
-        # Validate appointment time
         if appointment_time.time() >= availability.get_end_time():
-            return Response({
+            raise serializers.ValidationError({
                 "message": "No available slots within working hours."
-            }, status=status.HTTP_200_OK)
+            })
 
-        # Update availability and save appointment
         availability.booked_patients += 1
         availability.save()
 
-        # Assign the calculated values
         validated_data['doctor'] = doctor
         validated_data['appointment_date'] = appointment_time
+        validated_data['patient'] = patient
 
         appointment = super().create(validated_data)
-        return Response({
-            "message": "Appointment successfully created.",
-            "appointment": AppointmentSerializer(appointment).data
-        }, status=status.HTTP_201_CREATED)
+        return appointment #return the appointment object itself.
 
 
 
@@ -256,7 +381,6 @@ class AppointmentSerializer(serializers.ModelSerializer):
         """
         Override update to handle status changes, particularly cancellations.
         """
-        # If status is being updated to 'cancelled', update doctor availability
         if validated_data.get('status') == 'cancelled' and instance.status != 'cancelled':
             availability = DoctorAvailability.objects.filter(
                 doctor=instance.doctor,
@@ -268,6 +392,7 @@ class AppointmentSerializer(serializers.ModelSerializer):
                 availability.save()
 
         return super().update(instance, validated_data)
+
 
 class WaitingListSerializer(serializers.ModelSerializer):
     class Meta:

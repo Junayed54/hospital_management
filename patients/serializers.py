@@ -47,12 +47,12 @@ class ReportCategorySerializer(serializers.ModelSerializer):
         model = ReportCategory
         fields = ['id', 'name']
 
-class PatientTestTypeSerializer(serializers.ModelSerializer):
+class PatientReportTypeSerializer(serializers.ModelSerializer):
     """Serializes specific test types (e.g., CBC, Lipid Profile) under categories"""
     category_name = serializers.CharField(source='category.name', read_only=True)
 
     class Meta:
-        model = PatientTestType
+        model = ReportType
         fields = ['id', 'name', 'category', 'category_name']
         extra_kwargs = {'category': {'write_only': True}} 
 
@@ -60,25 +60,39 @@ class PatientReportSerializer(serializers.ModelSerializer):
     """Serializes patient reports with linked test type"""
     patient_username = serializers.CharField(source='patient.username', read_only=True)
     patient = serializers.HiddenField(default=serializers.CurrentUserDefault())  # Automatically assigns patient
-    test_type = PatientTestTypeSerializer()  # Nested serializer for test type details
+    report_type = PatientReportTypeSerializer()  # Nested serializer for test type details
 
     class Meta:
         model = PatientReport
-        fields = ['id', 'patient', 'patient_username', 'title', 'test_type', 'description', 'report_file', 'uploaded_at']
+        fields = ['id', 'patient', 'patient_username', 'title', 'report_type', 'description', 'report_file', 'uploaded_at']
         read_only_fields = ['patient', 'uploaded_at']
 
 class PatientReportCreateSerializer(serializers.ModelSerializer):
-    """Serializer for creating reports (accepts test_type ID instead of full object)"""
-    patient = serializers.HiddenField(default=serializers.CurrentUserDefault())
+    """Serializer for creating patient reports, using report_type ID or full object"""
+    patient = serializers.HiddenField(default=serializers.CurrentUserDefault())  # Hidden field to use current logged-in user
+    report_type = serializers.PrimaryKeyRelatedField(
+        queryset=ReportType.objects.all(),
+        required=True  # Ensures the field is required
+    )
+    report_type_name = serializers.SerializerMethodField()  
 
     class Meta:
         model = PatientReport
-        fields = ['title', 'test_type', 'description', 'report_file', 'patient']
+        fields = ['title', 'report_type', 'report_type_name', 'description', 'report_file', 'patient']
 
     def create(self, validated_data):
         """Ensures the authenticated user is assigned as the patient"""
-        validated_data['patient'] = self.context['request'].user
+        validated_data['patient'] = self.context['request'].user  # This line is redundant now with perform_create
         return super().create(validated_data)
+    
+    def get_report_type_name(self, obj):
+        """Return the name of the related report type"""
+        return obj.report_type.name
+
+    
+    # def __init__(self, *args, **kwargs):
+    #     super().__init__(*args, **kwargs)
+    #     self.fields['report_type'].queryset = ReportType.objects.all()
 
 class PatientPrescriptionSerializer(serializers.ModelSerializer):
     patient_username = serializers.CharField(source='patient.username', read_only=True)

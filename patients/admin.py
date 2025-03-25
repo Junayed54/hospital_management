@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Patient, BPLevel, SugarLevel, HeartRate, CholesterolLevel
+from .models import *
 
 # Register your models here.
 class PatientAdmin(admin.ModelAdmin):
@@ -13,11 +13,21 @@ class PatientAdmin(admin.ModelAdmin):
     )
     
 admin.site.register(Patient, PatientAdmin)
-
-
+class ReportTypeAdmin(admin.ModelAdmin):
+    list_display = ('id', 'name', 'category')
+admin.site.register(ReportType, ReportTypeAdmin)
 
 @admin.register(BPLevel, SugarLevel, HeartRate, CholesterolLevel)
 class HealthMetricAdmin(admin.ModelAdmin):
     list_display = ('patient', 'date')
     list_filter = ('date',)
     search_fields = ('patient__name',)
+    
+    
+@admin.register(PatientReport)
+class PatientReportAdmin(admin.ModelAdmin):
+    list_display = ('title', 'patient', 'report_type', 'uploaded_at')
+    search_fields = ('title', 'patient__username', 'report_type__name')
+    list_filter = ('report_type', 'uploaded_at')
+    date_hierarchy = 'uploaded_at'
+    readonly_fields = ('uploaded_at',)

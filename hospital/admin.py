@@ -31,21 +31,21 @@ class DoctorAvailabilityAdmin(admin.ModelAdmin):
     list_filter = ('doctor', 'date')
     search_fields = ('doctor__name', 'date')
     ordering = ('date', 'start_time')
-    readonly_fields = ('booked_patients',)
+    # readonly_fields = ('booked_patients',)
 
-    def has_add_permission(self, request):
-        """
-        Restrict doctors from adding their availability more than once for the same date and time.
-        """
-        return super().has_add_permission(request)
+    # def has_add_permission(self, request):
+    #     """
+    #     Restrict doctors from adding their availability more than once for the same date and time.
+    #     """
+    #     return super().has_add_permission(request)
 
-    def has_change_permission(self, request, obj=None):
-        """
-        Allow changes to availability only before any appointments are booked.
-        """
-        if obj and obj.booked_patients > 0:
-            return False
-        return super().has_change_permission(request, obj=obj)
+    # def has_change_permission(self, request, obj=None):
+    #     """
+    #     Allow changes to availability only before any appointments are booked.
+    #     """
+    #     if obj and obj.booked_patients > 0:
+    #         return False
+    #     return super().has_change_permission(request, obj=obj)
 
 @admin.register(WaitingList)
 class WaitingListAdmin(admin.ModelAdmin):  # Fixed class name
