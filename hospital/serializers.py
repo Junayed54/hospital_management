@@ -90,13 +90,13 @@ class SpecialtySerializer(serializers.ModelSerializer):
 class DoctorSerializer(serializers.ModelSerializer):
     profile_picture = serializers.ImageField(required=False)
     specialties = serializers.SerializerMethodField()
-
+    availability = DoctorAvailabilitySerializer(many=True, read_only=True)
     class Meta:
         model = Doctor
         fields = [
             'id', 'user', 'full_name', 'nid_number', 'license_number', 'bio', 'about',
             'experience_years', 'education', 'contact_email', 'contact_phone',
-            'address', 'profile_picture', 'specialties'
+            'address', 'profile_picture', 'specialties', 'availability'
         ]
         read_only_fields = ['user']
     

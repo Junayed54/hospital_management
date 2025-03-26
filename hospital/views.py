@@ -603,14 +603,16 @@ class CancelAppointmentView(APIView):
 
         try:
             # Get the appointment by id and the phone_number linked to the user
-            appointment = Appointment.objects.get(id=appointment_id, phone_number=str(request.user))
+            appointment = Appointment.objects.get(id=appointment_id)
             
+            appointment.cancel()
+            return Response({'message': 'Appointment cancelled successfully.'}, status=status.HTTP_200_OK)
             # Check if the appointment is in 'pending' status
-            if appointment.status == 'pending':
-                appointment.cancel()  # Assuming `cancel()` is a method on the Appointment model
-                return Response({'message': 'Appointment cancelled successfully.'}, status=status.HTTP_200_OK)
-            else:
-                return Response({'error': 'Appointment cannot be cancelled.'}, status=status.HTTP_400_BAD_REQUEST)
+            # if appointment.status == 'pending':
+            #     appointment.cancel()  # Assuming `cancel()` is a method on the Appointment model
+            #     return Response({'message': 'Appointment cancelled successfully.'}, status=status.HTTP_200_OK)
+            # else:
+            #     return Response({'error': 'Appointment cannot be cancelled.'}, status=status.HTTP_400_BAD_REQUEST)
         
         except Appointment.DoesNotExist:
             return Response({'error': 'Appointment not found.'}, status=status.HTTP_404_NOT_FOUND)
@@ -806,6 +808,14 @@ class SpecialtyCreateView(generics.CreateAPIView):
         """Ensure the specialty is assigned to the logged-in user (doctor)"""
         serializer.save(user=self.request.user)
 
+    def create(self, request, *args, **kwargs):
+        response = super().create(request, *args, **kwargs)
+        return Response(
+            {"message": "Specialty created successfully!", "data": response.data},
+            status=status.HTTP_201_CREATED
+        )
+
+
 class SpecialtyUpdateView(generics.UpdateAPIView):
     """Update an existing specialty (supports partial update)"""
     queryset = Specialty.objects.all()
@@ -816,10 +826,18 @@ class SpecialtyUpdateView(generics.UpdateAPIView):
         """Ensure a doctor can update only their own specialties"""
         return Specialty.objects.filter(user=self.request.user)
 
+    def update(self, request, *args, **kwargs):
+        response = super().update(request, *args, **kwargs)
+        return Response(
+            {"message": "Specialty updated successfully!", "data": response.data},
+            status=status.HTTP_200_OK
+        )
+
     def patch(self, request, *args, **kwargs):
         """Allow partial updates"""
         kwargs['partial'] = True  # Enables partial update
-        return super().patch(request, *args, **kwargs)
+        return self.update(request, *args, **kwargs)
+
 
 class SpecialtyDeleteView(generics.DestroyAPIView):
     """Delete a specialty"""
@@ -829,3 +847,10 @@ class SpecialtyDeleteView(generics.DestroyAPIView):
     def get_queryset(self):
         """Ensure a doctor can delete only their own specialties"""
         return Specialty.objects.filter(user=self.request.user)
+
+    def destroy(self, request, *args, **kwargs):
+        super().destroy(request, *args, **kwargs)
+        return Response(
+            {"message": "Specialty deleted successfully!"},
+            status=status.HTTP_204_NO_CONTENT
+        )

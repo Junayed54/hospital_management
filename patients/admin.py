@@ -26,7 +26,7 @@ class HealthMetricAdmin(admin.ModelAdmin):
     
 @admin.register(PatientReport)
 class PatientReportAdmin(admin.ModelAdmin):
-    list_display = ('title', 'patient', 'report_type', 'uploaded_at')
+    list_display = ('id', 'title', 'patient', 'report_type', 'uploaded_at')
     search_fields = ('title', 'patient__username', 'report_type__name')
     list_filter = ('report_type', 'uploaded_at')
     date_hierarchy = 'uploaded_at'

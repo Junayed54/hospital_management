@@ -51,8 +51,8 @@ class PatientAppointmentsView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request, *args, **kwargs):
-        patient = f"{request.user}"  # Assumes the authenticated user is the patient
-
+        patient = request.user.phone_number  # Assumes the authenticated user is the patient
+        print(patient)
         # Filter upcoming appointments
         upcoming_appointments = Appointment.objects.filter(
             Q(phone_number=patient),
@@ -65,17 +65,26 @@ class PatientAppointmentsView(APIView):
         joined_appointments = Appointment.objects.filter(
             Q(phone_number=patient),
             Q(appointment_date__lte=now()),
-            Q(status='accepted') | Q(prescription__isnull=False),  # OR condition
+            Q(status='accepted') | Q(prescription__isnull=False)  # OR condition
         ).order_by('-appointment_date')
+
+        # Filter pending appointments
+        pending_appointments = Appointment.objects.filter(
+            Q(phone_number=patient),
+            Q(status='pending')
+        ).order_by('appointment_date')
 
         # Serialize the data
         upcoming_appointments_data = AppointmentSerializer(upcoming_appointments, many=True).data
         joined_appointments_data = AppointmentSerializer(joined_appointments, many=True).data
+        pending_appointments_data = AppointmentSerializer(pending_appointments, many=True).data
 
         return Response({
             "upcoming_appointments": upcoming_appointments_data,
             "joined_appointments": joined_appointments_data,
+            "pending_appointments": pending_appointments_data,  # ✅ Added pending appointments
         })
+
 
 class UpdatePatientView(APIView):
     permission_classes = [IsAuthenticated]
